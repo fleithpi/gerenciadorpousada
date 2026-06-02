@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciador de reservas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+    <div class="relative min-h-screen">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full lg:translate-x-0 bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
+            <div class="flex items-center justify-between lg:hidden">
+                <div>
+                    <h2 class="text-2xl font-bold">Menu</h2>
+                    <p class="mt-1 text-sm text-blue-100">Acesse rapidamente as páginas principais.</p>
+                </div>
+                <button id="sidebarClose" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus:outline-none">✕</button>
+            </div>
+            <div class="hidden lg:block">
+                <div>
+                    <h2 class="text-2xl font-bold">Menu</h2>
+                    <p class="mt-2 text-sm text-blue-100">Acesse rapidamente as páginas principais.</p>
+                </div>
+            </div>
+            <nav class="mt-6 space-y-2 text-sm text-blue-100">
+                <a href="/" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Dashboard</a>
+                <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
+                <a href="/seed" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Popular dados</a>
+            </nav>
+        </aside>
+        <div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-slate-900/40 lg:hidden"></div>
+        <div id="mainContent" class="container mx-auto p-6 max-w-6xl ml-0 lg:ml-72 transition-all">
+        <div class="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+            <button id="sidebarToggle" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Menu</button>
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">Gerenciador de reservas</h1>
+                <p class="text-sm text-gray-500">Crie novas reservas e visualize o total das reservas atuais.</p>
+            </div>
+            <a href="/" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Voltar ao Painel</a>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="p-4 mb-4 rounded text-white {% if category=='erro' %}bg-red-500{% else %}bg-green-500{% endif %} font-semibold">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="grid gap-6 mb-6 md:grid-cols-3 max-w-4xl mx-auto">
+            <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Reservas</p>
+                <p class="mt-4 text-4xl font-bold text-slate-900">{{ total_reservas }}</p>
+                <p class="mt-2 text-sm text-gray-500">Total de reservas ativas.</p>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Valor total</p>
+                <p class="mt-4 text-4xl font-bold text-slate-900">R$ {{ "%.2f"|format(total_valor_reservas) }}</p>
+                <p class="mt-2 text-sm text-gray-500">Soma do valor de todas as reservas atuais.</p>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Acomodações</p>
+                <p class="mt-4 text-4xl font-bold text-slate-900">{{ total_acomodacoes }}</p>
+                <p class="mt-2 text-sm text-gray-500">Acomodações cadastradas.</p>
+            </div>
+        </div>
+
+        <div class="grid gap-6 lg:grid-cols-[1.3fr_1fr] mb-6">
+            <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Nova Reserva</h2>
+                <form action="/reservar" method="POST" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Hóspede</label>
+                        <input type="text" name="hospede" required class="mt-1 block w-full p-2 border rounded-md bg-gray-50 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600">Acomodação</label>
+                        <select name="acomodacao_id" required class="mt-1 block w-full p-2 border rounded-md bg-gray-50">
+                            {% for acomodacao in acomodacoes %}
+                                <option value="{{ acomodacao.id }}">[{{ acomodacao.pousada.nome }}] - {{ acomodacao.nome_numero }} (R$ {{ acomodacao.preco_diaria }}/dia)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Check-in</label>
+                            <input type="date" name="data_entrada" required class="mt-1 block w-full p-2 border rounded-md bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Check-out</label>
+                            <input type="date" name="data_saida" required class="mt-1 block w-full p-2 border rounded-md bg-gray-50">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-md font-semibold hover:bg-blue-700 transition duration-200">Salvar Reserva</button>
+                </form>
+            </div>
+            <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <h2 class="text-xl font-semibold text-gray-800 mb-4">Resumo rápido</h2>
+                <p class="text-gray-600 text-sm">Crie reservas no formulário ao lado e acompanhe os valores atualizados em tempo real.</p>
+                <div class="mt-6 space-y-3 text-sm text-gray-600">
+                    <p class="rounded-xl bg-slate-50 p-4 border border-slate-100">Total de reservas: <strong>{{ total_reservas }}</strong></p>
+                    <p class="rounded-xl bg-slate-50 p-4 border border-slate-100">Valor acumulado: <strong>R$ {{ "%.2f"|format(total_valor_reservas) }}</strong></p>
+                    <p class="rounded-xl bg-slate-50 p-4 border border-slate-100">Acomodações disponíveis: <strong>{{ total_acomodacoes }}</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Reservas atuais</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pousada</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acomodação</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 text-sm text-gray-600">
+                        {% if not reservas %}
+                            <tr>
+                                <td colspan="6" class="px-4 py-4 text-center text-gray-400 italic">Nenhuma reserva cadastrada.</td>
+                            </tr>
+                        {% endif %}
+                        {% for reserva in reservas %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 font-medium text-gray-800">{{ reserva.acomodacao.pousada.nome }}</td>
+                                <td class="px-4 py-3">{{ reserva.acomodacao.nome_numero }}</td>
+                                <td class="px-4 py-3">{{ reserva.hospede_nome }}</td>
+                                <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
+                                <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
+                                <td class="px-4 py-3">
+                                    <a href="{{ url_for('remover_reserva', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 font-medium">Remover</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <footer class="w-full mt-10 rounded-none bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner">
+            <div class="max-w-6xl mx-auto px-6 py-4 text-justify">
+                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC. • 2026
+            </div>
+        </footer>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const labels = {{ chart_labels | tojson | safe }};
+        const values = {{ chart_values | tojson | safe }};
+        const ctx = document.getElementById('reservasChart');
+        if (ctx) {
+            if (labels.length) {
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Reservas',
+                            data: values,
+                            backgroundColor: 'rgba(59, 130, 246, 0.75)',
+                            borderColor: 'rgba(37, 99, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 8,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 }
+                            }
+                        }
+                    }
+                });
+            } else if (ctx.parentNode) {
+                ctx.parentNode.innerHTML = '<p class="text-sm text-gray-500">Nenhuma reserva cadastrada ainda para gerar o gráfico.</p>';
+            }
+        }
+    </script>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarClose = document.getElementById('sidebarClose');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+        function openSidebar() {
+            sidebar.classList.remove('-translate-x-full');
+            sidebarBackdrop.classList.remove('hidden');
+        }
+
+        function closeSidebar() {
+            sidebar.classList.add('-translate-x-full');
+            sidebarBackdrop.classList.add('hidden');
+        }
+
+        sidebarToggle?.addEventListener('click', () => {
+            if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
+        });
+
+        sidebarClose?.addEventListener('click', closeSidebar);
+        sidebarBackdrop?.addEventListener('click', closeSidebar);
+    </script>
+</body>
+</html>
