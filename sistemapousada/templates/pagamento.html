@@ -6,25 +6,27 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-    <div class="relative flex-1 flex flex-col">
-        
-        <!-- Sidebar -->
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full lg:translate-x-0 bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
-            <div class="hidden lg:block">
-                <div>
-                    <h2 class="text-2xl font-bold">Menu</h2>
-                    <p class="mt-2 text-sm text-blue-100">Acesse rapidamente as páginas principais.</p>
-                </div>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full lg:translate-x-0 bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
+        <div class="hidden lg:block">
+            <div>
+                <h2 class="text-2xl font-bold">Menu</h2>
+                <p class="mt-2 text-sm text-blue-100">Acesse rapidamente as páginas principais.</p>
             </div>
-            <nav class="mt-6 space-y-2 text-sm text-blue-100">
-                <a href="/" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Dashboard</a>
-                <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
-                <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Gerenciar pagamentos</a>
-            </nav>
-        </aside>
+        </div>
+        <nav class="mt-6 space-y-2 text-sm text-blue-100">
+            <a href="/" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Dashboard</a>
+            <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
+            <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Gerenciar pagamentos</a>
+        </nav>
+    </aside>
 
+    <!-- WRAPPER PRINCIPAL DA ÁREA CONTEÚDO + FOOTER -->
+    <div class="flex-1 flex flex-col pl-0 lg:pl-72 w-full">
+        
         <!-- Conteúdo Principal -->
-        <main id="mainContent" class="container mx-auto p-6 max-w-6xl ml-0 lg:ml-72 transition-all flex-1">
+        <main id="mainContent" class="container mx-auto p-6 max-w-6xl flex-1 w-full transition-all">
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-3xl font-bold text-gray-800">Gerenciar Pagamentos</h1>
                 <a href="/reservas" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Voltar</a>
@@ -91,8 +93,10 @@
         </main>
 
         <!-- Footer -->
-        <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-4 text-center pl-0 lg:pl-72">
-            <div class="px-6">Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC. • 2026</div>
+        <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-5 text-center mt-auto">
+            <div class="px-6">
+                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC - 2026
+            </div>
         </footer>
 
     </div>

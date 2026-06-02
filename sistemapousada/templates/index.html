@@ -2,44 +2,49 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Pousadas Multi-Tenant</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
-    <div class="relative flex-1 flex flex-col">
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
-            <div class="flex items-center justify-between lg:hidden">
-                <div>
-                    <h2 class="text-2xl font-bold">Menu</h2>
-                    <p class="mt-1 text-sm text-blue-100">Navegue pelas áreas principais.</p>
-                </div>
-                <button id="sidebarClose" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus:outline-none">✕</button>
+    
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300 lg:translate-x-0">
+        <div class="flex items-center justify-between lg:hidden">
+            <div>
+                <h2 class="text-2xl font-bold">Menu</h2>
+                <p class="mt-1 text-sm text-blue-100">Navegue pelas áreas principais.</p>
             </div>
-            <div class="hidden lg:block">
-                <div>
-                    <h2 class="text-2xl font-bold">Menu</h2>
-                    <p class="mt-2 text-sm text-blue-100">Navegue pelas áreas principais do sistema.</p>
-                </div>
+            <button id="sidebarClose" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus:outline-none">✕</button>
+        </div>
+        <div class="hidden lg:block">
+            <div>
+                <h2 class="text-2xl font-bold">Menu</h2>
+                <p class="mt-2 text-sm text-blue-100">Navegue pelas áreas principais do sistema.</p>
             </div>
-            <nav class="mt-6 space-y-2 text-sm text-blue-100">
-                <a href="#metricas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Métricas gerais</a>
-                <a href="#grafico" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Reservas por Pousada</a>
-                <a href="#nova-reserva" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Criar nova reserva</a>
-                <a href="#nova-acomodacao" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Adicionar acomodação</a>
-                <a href="#nova-pousada" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Cadastrar pousada</a>
-                <a href="#acomodacoes-existentes" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Acomodações existentes</a>
-                <a href="#reservas-atuais" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Reservas atuais</a>
-                <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
-                <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciar pagamentos</a>
-                <a href="/seed" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Popular dados</a>
-            </nav>
-        </aside>
-        <div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-slate-900/40 lg:hidden"></div>
-        <div id="mainContent" class="container mx-auto p-6 max-w-6xl ml-0 lg:ml-72 transition-all">
+        </div>
+        <nav class="mt-6 space-y-2 text-sm text-blue-100">
+            <a href="#metricas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Métricas gerais</a>
+            <a href="#grafico" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Reservas por Pousada</a>
+            <a href="#nova-reserva" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Criar nova reserva</a>
+            <a href="#nova-acomodacao" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Adicionar acomodação</a>
+            <a href="#nova-pousada" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Cadastrar pousada</a>
+            <a href="#reservas-atuais" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Reservas atuais</a>
+            <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
+            <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciar pagamentos</a>
+            <a href="/seed" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Popular dados</a>
+        </nav>
+    </aside>
+
+    <div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-slate-900/40 lg:hidden"></div>
+
+    <div class="flex-1 flex flex-col pl-0 lg:pl-72 w-full">
+        
+        <main id="mainContent" class="container mx-auto p-6 max-w-6xl flex-1 w-full">
             <div class="flex items-center justify-between mb-6">
-                <button id="sidebarToggle" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Menu</button>
-                <h1 class="text-3xl font-bold text-gray-800 mb-0 text-center lg:text-left"> Sistema de Gestão de Hospedagens</h1>
+                <button id="sidebarToggle" aria-expanded="false" aria-controls="sidebar" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition lg:hidden">Menu</button>
+                <h1 class="text-3xl font-bold text-gray-800 mb-0 text-center lg:text-left w-full lg:w-auto">Sistema de Gestão de Hospedagens</h1>
             </div>
+
             <div class="space-y-6">
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
@@ -50,6 +55,7 @@
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
+
                 <div id="metricas" class="grid gap-6 mb-6 md:grid-cols-3">
                     <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pousadas</p>
@@ -67,6 +73,7 @@
                         <p class="mt-2 text-sm text-gray-500">Reservas confirmadas até agora.</p>
                     </div>
                 </div>
+
                 <div id="grafico" class="grid gap-6 lg:grid-cols-[1.3fr_1fr] mb-6">
                     <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
@@ -86,8 +93,9 @@
                         </ul>
                     </div>
                 </div>
-                <div id="nova-reserva" class="grid gap-6 lg:grid-cols-3 mb-6">
-                    <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+
+                <div class="grid gap-6 lg:grid-cols-3 mb-6">
+                    <div id="nova-reserva" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Criar Nova Reserva</h2>
                         <form action="/reservar" method="POST" class="space-y-4">
                             <div>
@@ -115,6 +123,7 @@
                             <button type="submit" class="w-full bg-blue-600 text-white p-2.5 rounded-md font-semibold hover:bg-blue-700 transition duration-200">Confirmar Aluguel</button>
                         </form>
                     </div>
+
                     <div id="nova-acomodacao" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Adicionar Acomodação</h2>
                         <form action="/adicionar-acomodacao" method="POST" class="space-y-4">
@@ -143,9 +152,10 @@
                             </div>
                             <button type="submit" class="w-full bg-green-600 text-white p-2.5 rounded-md font-semibold hover:bg-green-700 transition duration-200">Adicionar Acomodação</button>
                         </form>
+
                         <div id="acomodacoes-existentes" class="mt-6">
                             <h3 class="text-lg font-semibold text-gray-800 mb-3">Acomodações existentes</h3>
-                            <div class="space-y-3 text-sm text-gray-600">
+                            <div class="space-y-3 text-sm text-gray-600 max-h-60 overflow-y-auto">
                                 {% for ac in acomodacoes %}
                                     <div class="p-3 rounded-xl border border-gray-200 bg-slate-50 flex items-center justify-between gap-3">
                                         <div>
@@ -160,7 +170,8 @@
                             </div>
                         </div>
                     </div>
-                    <div id="nova-pousada-card" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+
+                    <div id="nova-pousada" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 h-fit">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Cadastrar Nova Pousada</h2>
                         <form action="/adicionar-pousada" method="POST" class="space-y-4">
                             <div>
@@ -171,58 +182,61 @@
                         </form>
                     </div>
                 </div>
+
+                <div id="reservas-atuais" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 w-full mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">Ocupação Atual / Diárias Ativas</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pousada</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acomodação</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 text-sm text-gray-600">
+                                {% if not reservas %}
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-4 text-center text-gray-400 italic">Nenhum quarto alugado no momento.</td>
+                                    </tr>
+                                {% endif %}
+                                {% for reserva in reservas %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 font-medium text-gray-800">{{ reserva.acomodacao.pousada.nome }}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="px-2 py-1 text-xs rounded font-semibold {% if reserva.acomodacao.tipo == 'casa' %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %}">
+                                                {{ reserva.acomodacao.nome_numero }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3">{{ reserva.hospede }}</td>
+                                        <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
+                                        <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
+                                        <td class="px-4 py-3">
+                                            <a href="{{ url_for('remover_reserva', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 font-medium">Remover</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div id="reservas-atuais" class="flex-1"> class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">Ocupação Atual / Diárias Ativas</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pousada</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acomodação</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 text-sm text-gray-600">
-                        {% if not reservas %}
-                            <tr>
-                                <td colspan="6" class="px-4 py-4 text-center text-gray-400 italic">Nenhum quarto alugado no momento.</td>
-                            </tr>
-                        {% endif %}
-                        {% for reserva in reservas %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 font-medium text-gray-800">{{ reserva.acomodacao.pousada.nome }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="px-2 py-1 text-xs rounded font-semibold {% if reserva.acomodacao.tipo == 'casa' %}bg-purple-100 text-purple-800{% else %}bg-green-100 text-green-800{% endif %}">
-                                        {{ reserva.acomodacao.nome_numero }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3">{{ reserva.hospede_nome }}</td>
-                                <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
-                                <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
-                                <td class="px-4 py-3">
-                                    <a href="{{ url_for('remover_reserva', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 font-medium">Remover</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-4 text-center pl-0 lg:pl-72">
+        </main>
+
+        <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-5 text-center mt-auto">
             <div class="px-6">
                 Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC - 2026
             </div>
         </footer>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const labels = {{ chart_labels | tojson | safe }};
-        const values = {{ chart_values | tojson | safe }};
+        const labels = {{ chart_labels | tojson | safe if chart_labels else '[]' }};
+        const values = {{ chart_values | tojson | safe if chart_values else '[]' }};
         const ctx = document.getElementById('reservasChart');
         if (ctx) {
             if (labels.length) {
@@ -267,20 +281,27 @@
         function openSidebar() {
             sidebar.classList.remove('-translate-x-full');
             sidebarBackdrop.classList.remove('hidden');
+            sidebarToggle?.setAttribute('aria-expanded', 'true');
         }
 
         function closeSidebar() {
             sidebar.classList.add('-translate-x-full');
             sidebarBackdrop.classList.add('hidden');
+            sidebarToggle?.setAttribute('aria-expanded', 'false');
         }
 
-        // Toggle: if sidebar is hidden, open; otherwise close
         sidebarToggle?.addEventListener('click', () => {
             if (sidebar.classList.contains('-translate-x-full')) openSidebar(); else closeSidebar();
         });
 
         sidebarClose?.addEventListener('click', closeSidebar);
         sidebarBackdrop?.addEventListener('click', closeSidebar);
+        
+        document.querySelectorAll('#sidebar nav a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) closeSidebar();
+            });
+        });
     </script>
 </body>
 </html>
