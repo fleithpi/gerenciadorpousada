@@ -5,9 +5,9 @@
     <title>Gerenciador de Pousadas Multi-Tenant</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen">
-    <div class="relative min-h-screen">
-        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full lg:translate-x-0 bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+    <div class="relative flex-1 flex flex-col">
+        <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
             <div class="flex items-center justify-between lg:hidden">
                 <div>
                     <h2 class="text-2xl font-bold">Menu</h2>
@@ -30,6 +30,7 @@
                 <a href="#acomodacoes-existentes" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Acomodações existentes</a>
                 <a href="#reservas-atuais" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Reservas atuais</a>
                 <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
+                <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciar pagamentos</a>
                 <a href="/seed" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Popular dados</a>
             </nav>
         </aside>
@@ -37,7 +38,7 @@
         <div id="mainContent" class="container mx-auto p-6 max-w-6xl ml-0 lg:ml-72 transition-all">
             <div class="flex items-center justify-between mb-6">
                 <button id="sidebarToggle" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Menu</button>
-                <h1 class="text-3xl font-bold text-gray-800 mb-0 text-center lg:text-left">🏨 Sistema de Gestão de Hospedagens</h1>
+                <h1 class="text-3xl font-bold text-gray-800 mb-0 text-center lg:text-left"> Sistema de Gestão de Hospedagens</h1>
             </div>
             <div class="space-y-6">
                 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -172,8 +173,7 @@
                 </div>
             </div>
         </div>
-        
-        <div id="reservas-atuais" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto">
+        <div id="reservas-atuais" class="flex-1"> class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">Ocupação Atual / Diárias Ativas</h2>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -213,9 +213,9 @@
                 </table>
             </div>
         </div>
-        <footer class="w-full mt-10 rounded-none bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner">
-            <div class="max-w-6xl mx-auto px-6 py-4 text-justify">
-                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC. • 2026
+        <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-4 text-center pl-0 lg:pl-72">
+            <div class="px-6">
+                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC - 2026
             </div>
         </footer>
     </div>

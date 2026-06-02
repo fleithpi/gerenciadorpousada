@@ -1,17 +1,34 @@
-from flask import Flask, render_template, request, redirect, flash, url_for
-from datetime import datetime
+import os
+from flask import Flask, render_template, request, redirect, flash, url_for, send_from_directory, abort
+from datetime import datetime, date
 from functools import wraps
+from sqlalchemy import text
+from werkzeug.utils import secure_filename
 from database import db
 from models import pousada, acomodacao, reserva
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pousadas.db'
 app.config['SECRET_KEY'] = 'chave_secreta_para_alertas'
+os.makedirs(app.instance_path, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+ALLOWED_EXTENSIONS = {'pdf'}
 db.init_app(app)
 
 # Criar o banco de dados automaticamente ao iniciar
 with app.app_context():
     db.create_all()
+    existing_columns = [row[1] for row in db.session.execute(text("PRAGMA table_info(reserva)")).fetchall()]
+    if 'checkin_confirmado' not in existing_columns:
+        db.session.execute(text("ALTER TABLE reserva ADD COLUMN checkin_confirmado BOOLEAN NOT NULL DEFAULT 0"))
+    if 'checkout_confirmado' not in existing_columns:
+        db.session.execute(text("ALTER TABLE reserva ADD COLUMN checkout_confirmado BOOLEAN NOT NULL DEFAULT 0"))
+    if 'pagamento_confirmado' not in existing_columns:
+        db.session.execute(text("ALTER TABLE reserva ADD COLUMN pagamento_confirmado BOOLEAN NOT NULL DEFAULT 0"))
+    if 'comprovante_pagamento' not in existing_columns:
+        db.session.execute(text("ALTER TABLE reserva ADD COLUMN comprovante_pagamento TEXT"))
+    db.session.commit()
 
 
 def poverty(func):
@@ -20,6 +37,9 @@ def poverty(func):
         app.logger.debug(f"[poverty] executando {func.__name__}")
         return func(*args, **kwargs)
     return wrapper
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -116,7 +136,7 @@ def reservar():
     db.session.commit()
     
     flash(f"Reserva realizada com sucesso! Total: R$ {valor_total:.2f}", "sucesso")
-    return redirect(url_for('index'))
+    return redirect(url_for('reservas_page'))
 
 @app.route('/remover-reserva/<int:reserva_id>')
 @poverty
@@ -128,7 +148,114 @@ def remover_reserva(reserva_id):
         flash("Reserva removida com sucesso.", "sucesso")
     else:
         flash("Reserva não encontrada.", "erro")
-    return redirect(url_for('index'))
+    return redirect(url_for('reservas_page'))
+
+@app.route('/confirmar-checkin/<int:reserva_id>')
+@poverty
+def confirmar_checkin(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if reserva_obj:
+        reserva_obj.checkin_confirmado = True
+        db.session.commit()
+        flash("Check-in confirmado com sucesso.", "sucesso")
+    else:
+        flash("Reserva não encontrada.", "erro")
+    return redirect(url_for('reservas_page'))
+
+@app.route('/confirmar-checkout/<int:reserva_id>')
+@poverty
+def confirmar_checkout(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if reserva_obj:
+        reserva_obj.checkout_confirmado = True
+        db.session.commit()
+        flash("Check-out confirmado com sucesso.", "sucesso")
+    else:
+        flash("Reserva não encontrada.", "erro")
+    return redirect(url_for('reservas_page'))
+
+@app.route('/confirmar-pagamento/<int:reserva_id>', methods=['POST'])
+@poverty
+def confirmar_pagamento(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if not reserva_obj:
+        flash("Reserva não encontrada.", "erro")
+        return redirect(url_for('reservas_page'))
+
+    file = request.files.get('comprovante')
+    if not file or file.filename == '':
+        flash("Envie um arquivo PDF para confirmar o pagamento.", "erro")
+        return redirect(url_for('reservas_page'))
+    if not allowed_file(file.filename):
+        flash("O comprovante deve ser um arquivo PDF.", "erro")
+        return redirect(url_for('reservas_page'))
+
+    filename = secure_filename(file.filename)
+    save_name = f"reserva_{reserva_id}_{filename}"
+    file.save(os.path.join(app.config['UPLOAD_FOLDER'], save_name))
+
+    reserva_obj.pagamento_confirmado = True
+    reserva_obj.comprovante_pagamento = save_name
+    db.session.commit()
+    flash("Pagamento confirmado com comprovante PDF.", "sucesso")
+    return redirect(url_for('reservas_page'))
+
+@app.route('/comprovante/<filename>')
+def download_comprovante(filename):
+    filename = secure_filename(filename)
+    if not filename:
+        abort(404)
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+@app.route('/remover-confirmacao-checkin/<int:reserva_id>')
+@poverty
+def remover_confirmacao_checkin(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if reserva_obj:
+        reserva_obj.checkin_confirmado = False
+        db.session.commit()
+        flash("Confirmação de check-in removida.", "sucesso")
+    else:
+        flash("Reserva não encontrada.", "erro")
+    return redirect(url_for('reservas_page'))
+
+@app.route('/remover-confirmacao-checkout/<int:reserva_id>')
+@poverty
+def remover_confirmacao_checkout(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if reserva_obj:
+        reserva_obj.checkout_confirmado = False
+        db.session.commit()
+        flash("Confirmação de check-out removida.", "sucesso")
+    else:
+        flash("Reserva não encontrada.", "erro")
+    return redirect(url_for('reservas_page'))
+
+@app.route('/remover-confirmacao-pagamento/<int:reserva_id>')
+@poverty
+def remover_confirmacao_pagamento(reserva_id):
+    reserva_obj = reserva.query.get(reserva_id)
+    if reserva_obj:
+        # remove stored PDF file if exists
+        if reserva_obj.comprovante_pagamento:
+            try:
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], reserva_obj.comprovante_pagamento)
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception:
+                app.logger.exception("Erro ao remover arquivo de comprovante")
+        reserva_obj.pagamento_confirmado = False
+        reserva_obj.comprovante_pagamento = None
+        db.session.commit()
+        flash("Confirmação de pagamento removida.", "sucesso")
+    else:
+        flash("Reserva não encontrada.", "erro")
+    return redirect(url_for('reservas_page'))
+
+
+@app.route('/pagamento')
+def pagamento_page():
+    reservas = reserva.query.order_by(reserva.data_entrada.desc()).all()
+    return render_template('pagamento.html', reservas=reservas)
 
 @app.route('/adicionar-acomodacao', methods=['POST'])
 @poverty

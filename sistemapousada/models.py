@@ -20,6 +20,11 @@ class reserva(db.Model):
     data_entrada = db.Column(db.Date, nullable=False)
     data_saida = db.Column(db.Date, nullable=False)
     valor_total = db.Column(db.Float, nullable=False)
+    checkin_confirmado = db.Column(db.Boolean, default=False, nullable=False)
+    checkout_confirmado = db.Column(db.Boolean, default=False, nullable=False)
+    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False)
+    comprovante_pagamento = db.Column(db.String(200), nullable=True)
+    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False)
 
     @staticmethod
     def verificar_disponibilidade(acomodacao_id, entrada, saida):

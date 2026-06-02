@@ -5,8 +5,8 @@
     <title>Gerenciador de reservas</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen">
-    <div class="relative min-h-screen">
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col">
+    <div class="relative flex-1 flex flex-col">
         <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full lg:translate-x-0 bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
             <div class="flex items-center justify-between lg:hidden">
                 <div>
@@ -24,6 +24,7 @@
             <nav class="mt-6 space-y-2 text-sm text-blue-100">
                 <a href="/" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Dashboard</a>
                 <a href="/reservas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciador de reservas</a>
+                <a href="/pagamento" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Gerenciar pagamentos</a>
                 <a href="/seed" class="block rounded-lg px-3 py-2 bg-blue-100 text-blue-900 hover:bg-blue-200 transition">Popular dados</a>
             </nav>
         </aside>
@@ -106,45 +107,98 @@
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Reservas atuais</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pousada</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acomodação</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 text-sm text-gray-600">
-                        {% if not reservas %}
-                            <tr>
-                                <td colspan="6" class="px-4 py-4 text-center text-gray-400 italic">Nenhuma reserva cadastrada.</td>
-                            </tr>
-                        {% endif %}
-                        {% for reserva in reservas %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 font-medium text-gray-800">{{ reserva.acomodacao.pousada.nome }}</td>
-                                <td class="px-4 py-3">{{ reserva.acomodacao.nome_numero }}</td>
-                                <td class="px-4 py-3">{{ reserva.hospede_nome }}</td>
-                                <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
-                                <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
-                                <td class="px-4 py-3">
-                                    <a href="{{ url_for('remover_reserva', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 font-medium">Remover</a>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <footer class="w-full mt-10 rounded-none bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner">
-            <div class="max-w-6xl mx-auto px-6 py-4 text-justify">
-                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC. • 2026
+        <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 max-w-4xl mx-auto mb-10">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Reservas atuais</h2>
+                    <div class="overflow-x-auto w-full">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pousada</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acomodação</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hóspede</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Período</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 text-sm text-gray-600">
+                                {% if not reservas %}
+                                    <tr>
+                                        <td colspan="7" class="px-4 py-4 text-center text-gray-400 italic">Nenhuma reserva cadastrada.</td>
+                                    </tr>
+                                {% endif %}
+                                {% for reserva in reservas %}
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 font-medium text-gray-800">{{ reserva.acomodacao.pousada.nome }}</td>
+                                        <td class="px-4 py-3">{{ reserva.acomodacao.nome_numero }}</td>
+                                        <td class="px-4 py-3">{{ reserva.hospede_nome }}</td>
+                                        <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
+                                        <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-col gap-2 text-sm">
+                                                <span class="inline-flex items-center gap-2">
+                                                    <span class="text-emerald-500">✅</span>
+                                                    <span class="font-semibold">Check-in</span>
+                                                    {% if reserva.checkin_confirmado %}
+                                                        <span class="text-emerald-600">confirmado</span>
+                                                    {% else %}
+                                                        <span class="text-gray-500">aguardando</span>
+                                                    {% endif %}
+                                                </span>
+                                                {% if not reserva.checkin_confirmado %}
+                                                    <a href="{{ url_for('confirmar_checkin', reserva_id=reserva.id) }}" class="text-blue-600 hover:text-blue-800 text-xs">Confirmar check-in</a>
+                                                {% else %}
+                                                    <a href="{{ url_for('remover_confirmacao_checkin', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</a>
+                                                {% endif %}
+                                                <span class="inline-flex items-center gap-2">
+                                                    <span class="text-sky-500">🏁</span>
+                                                    <span class="font-semibold">Check-out</span>
+                                                    {% if reserva.checkout_confirmado %}
+                                                        <span class="text-emerald-600">confirmado</span>
+                                                    {% else %}
+                                                        <span class="text-gray-500">aguardando</span>
+                                                    {% endif %}
+                                                </span>
+                                                {% if not reserva.checkout_confirmado %}
+                                                    <a href="{{ url_for('confirmar_checkout', reserva_id=reserva.id) }}" class="text-blue-600 hover:text-blue-800 text-xs">Confirmar check-out</a>
+                                                {% else %}
+                                                    <a href="{{ url_for('remover_confirmacao_checkout', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</a>
+                                                {% endif %}
+                                                <span class="inline-flex items-center gap-2">
+                                                    <span class="text-yellow-500">💳</span>
+                                                    <span class="font-semibold">Pagamento</span>
+                                                    {% if reserva.pagamento_confirmado %}
+                                                        <span class="text-emerald-600">confirmado</span>
+                                                    {% else %}
+                                                        <span class="text-gray-500">aguardando</span>
+                                                    {% endif %}
+                                                </span>
+                                                {% if not reserva.pagamento_confirmado %}
+                                                    <form action="{{ url_for('confirmar_pagamento', reserva_id=reserva.id) }}" method="post" enctype="multipart/form-data" class="space-y-1">
+                                                        <input type="file" name="comprovante" accept="application/pdf" class="block text-xs text-gray-700" required>
+                                                        <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs">Enviar comprovante</button>
+                                                    </form>
+                                                {% else %}
+                                                    {% if reserva.comprovante_pagamento %}
+                                                        <a href="{{ url_for('download_comprovante', filename=reserva.comprovante_pagamento) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Ver comprovante</a>
+                                                    {% endif %}
+                                                    <a href="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</a>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <a href="{{ url_for('remover_reserva', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 font-medium">Remover</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div> </div> <footer class="w-full bg-blue-900 text-white text-sm border-t border-blue-800 shadow-inner py-4 text-center pl-0 lg:pl-72">
+            <div class="px-6">
+                Sistema criado por PIETRO CAETANO FLEITH - GAROPABA, SC - 2026
             </div>
         </footer>
     </div>
