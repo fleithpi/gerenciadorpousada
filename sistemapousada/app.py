@@ -8,11 +8,18 @@ from database import db
 from models import pousada, acomodacao, reserva
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pousadas.db'
-app.config['SECRET_KEY'] = 'chave_secreta_para_alertas'
-os.makedirs(app.instance_path, exist_ok=True)
-app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_para_alertas')
+
+# Criar pastas necessárias
+try:
+    os.makedirs(app.instance_path, exist_ok=True)
+    app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+except Exception as e:
+    app.logger.warning(f"Não foi possível criar pasta de uploads: {e}")
+    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 ALLOWED_EXTENSIONS = {'pdf'}
 db.init_app(app)
 
@@ -329,4 +336,5 @@ def seed():
     return "O banco já possui dados."
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
