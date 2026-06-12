@@ -4,7 +4,7 @@ from datetime import datetime, date
 from functools import wraps
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
-from sistemapusada.database import db
+from sistemapousada.database import db
 from sistemapousada.models import pousada, acomodacao, reserva
 
 app = Flask(__name__)
