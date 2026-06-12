@@ -343,6 +343,22 @@ def seed():
         return "Banco de dados populado com sucesso!"
     return "O banco já possui dados."
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        usuario = Usuario.query.filter_by(username=request.form['username']).first()
+        if usuario and usuario.check_password(request.form['password']):
+            login_user(usuario)
+            return redirect(url_for('index'))
+        flash("Usuário ou senha inválidos", "erro")
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
 if __name__ == '__main__':
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
