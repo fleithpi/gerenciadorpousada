@@ -4,8 +4,8 @@ from datetime import datetime, date
 from functools import wraps
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
-from sistemapousada.database import db
-from sistemapousada.models import pousada, acomodacao, reserva
+from database import db
+from models import pousada, acomodacao, reserva
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
