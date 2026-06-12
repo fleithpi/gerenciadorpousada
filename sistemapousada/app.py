@@ -1,4 +1,6 @@
 import os
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from sistemapousada.models import Usuario 
 from flask import Flask, render_template, request, redirect, flash, url_for, send_from_directory, abort
 from datetime import datetime, date
 from functools import wraps
