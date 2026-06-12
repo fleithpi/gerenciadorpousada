@@ -1,4 +1,4 @@
-from database import db
+from sistemapousada.database import db
 
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
