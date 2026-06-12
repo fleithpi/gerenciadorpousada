@@ -12,7 +12,13 @@ from sistemapousada.models import pousada, acomodacao, reserva
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_para_alertas')
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
+@login_manager.user_loader
+def load_user(user_id):
+    return Usuario.query.get(int(user_id))
 # Criar pastas necessárias
 try:
     os.makedirs(app.instance_path, exist_ok=True)
