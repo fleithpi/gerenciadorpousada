@@ -1,25 +1,30 @@
 import os
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from sistemapousada.models import Usuario 
 from flask import Flask, render_template, request, redirect, flash, url_for, send_from_directory, abort
 from datetime import datetime, date
 from functools import wraps
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
+
+# Importações internas do seu projeto
 from sistemapousada.database import db
-from sistemapousada.models import pousada, acomodacao, reserva
+from sistemapousada.models import Usuario, pousada, acomodacao, reserva
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_para_alertas')
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = "Por favor, faça o login para acessar esta página."
+login_manager.login_message_category = "erro"
 
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
-# Criar pastas necessárias
+
+# Criar pastas necessárias para uploads
 try:
     os.makedirs(app.instance_path, exist_ok=True)
     app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
@@ -28,10 +33,11 @@ except Exception as e:
     app.logger.warning(f"Não foi possível criar pasta de uploads: {e}")
     app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 ALLOWED_EXTENSIONS = {'pdf'}
 db.init_app(app)
 
-# Criar o banco de dados automaticamente ao iniciar
+# Criar o banco de dados e aplicar migrações automáticas ao iniciar
 with app.app_context():
     db.create_all()
     existing_columns = [row[1] for row in db.session.execute(text("PRAGMA table_info(reserva)")).fetchall()]
@@ -56,7 +62,57 @@ def poverty(func):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+# --- ROTAS DE AUTENTICAÇÃO ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        usuario = Usuario.query.filter_by(username=request.form['username']).first()
+        if usuario and usuario.check_password(request.form['password']):
+            login_user(usuario)
+            return redirect(url_for('index'))
+        flash("Usuário ou senha inválidos", "erro")
+    return render_template('login.html')
+
+@app.route('/registrar', methods=['GET', 'POST'])
+def registrar():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        if not username or not password:
+            flash("Todos os campos são obrigatórios.", "erro")
+            return redirect(url_for('registrar'))
+
+        if Usuario.query.filter_by(username=username).first():
+            flash("Este nome de usuário já está em uso.", "erro")
+            return redirect(url_for('registrar'))
+
+        novo_usuario = Usuario(username=username, role='cliente')
+        novo_usuario.set_password(password)
+        db.session.add(novo_usuario)
+        db.session.commit()
+
+        flash("Conta criada com sucesso! Você já pode fazer login.", "sucesso")
+        return redirect(url_for('login'))
+
+    return render_template('registrar.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+
+# --- ROTAS PRINCIPAIS DO SISTEMA ---
+
 @app.route('/')
+@login_required
 def index():
     pousadas = pousada.query.all()
     acomodacoes = acomodacao.query.all()
@@ -87,6 +143,7 @@ def index():
     )
 
 @app.route('/reservas')
+@login_required
 def reservas_page():
     pousadas = pousada.query.all()
     acomodacoes = acomodacao.query.all()
@@ -119,12 +176,12 @@ def reservas_page():
     )
 
 @app.route('/reservar', methods=['POST'])
+@login_required
 @poverty
 def reservar():
     acomodacao_id = int(request.form['acomodacao_id'])
     hospede = request.form['hospede']
     
-    # Converte as strings de data vindas do HTML em objetos Date do Python
     entrada = datetime.strptime(request.form['data_entrada'], '%Y-%m-%d').date()
     saida = datetime.strptime(request.form['data_saida'], '%Y-%m-%d').date()
 
@@ -132,17 +189,14 @@ def reservar():
         flash("A data de saída deve ser maior que a data de entrada!", "erro")
         return redirect(url_for('index'))
 
-    # Verifica se a acomodação está livre
     if not reserva.verificar_disponibilidade(acomodacao_id, entrada, saida):
         flash("Desculpe, este quarto/casa já está alugado neste período!", "erro")
         return redirect(url_for('index'))
 
-    # Calcula o valor total
     acomodacao_obj = acomodacao.query.get(acomodacao_id)
     diarias = (saida - entrada).days
     valor_total = diarias * acomodacao_obj.preco_diaria
 
-    # Salva no banco
     nova_reserva = reserva(
         acomodacao_id=acomodacao_id, hospede_nome=hospede,
         data_entrada=entrada, data_saida=saida, valor_total=valor_total
@@ -154,8 +208,13 @@ def reservar():
     return redirect(url_for('reservas_page'))
 
 @app.route('/remover-reserva/<int:reserva_id>')
+@login_required
 @poverty
 def remover_reserva(reserva_id):
+    if current_user.role != 'admin':
+        flash("Acesso negado. Apenas administradores podem remover reservas.", "erro")
+        return redirect(url_for('reservas_page'))
+
     reserva_obj = reserva.query.get(reserva_id)
     if reserva_obj:
         db.session.delete(reserva_obj)
@@ -165,7 +224,75 @@ def remover_reserva(reserva_id):
         flash("Reserva não encontrada.", "erro")
     return redirect(url_for('reservas_page'))
 
+
+# --- ACOMODAÇÕES E POUSADAS ---
+
+@app.route('/adicionar-acomodacao', methods=['POST'])
+@login_required
+@poverty
+def adicionar_acomodacao():
+    try:
+        pousada_id = int(request.form['pousada_id'])
+        nome_numero = request.form['nome_numero'].strip()
+        tipo = request.form['tipo']
+        preco_diaria = float(request.form['preco_diaria'])
+
+        if not nome_numero or preco_diaria <= 0:
+            raise ValueError
+
+        nova_acomodacao = acomodacao(
+            pousada_id=pousada_id,
+            nome_numero=nome_numero,
+            tipo=tipo,
+            preco_diaria=preco_diaria
+        )
+        db.session.add(nova_acomodacao)
+        db.session.commit()
+        flash("Acomodação adicionada com sucesso!", "sucesso")
+    except (ValueError, KeyError):
+        flash("Preencha corretamente todos os campos da acomodação.", "erro")
+    return redirect(url_for('index'))
+
+@app.route('/adicionar-pousada', methods=['POST'])
+@login_required
+@poverty
+def adicionar_pousada():
+    nome = request.form.get('nome', '').strip()
+    if not nome:
+        flash("O nome da pousada é obrigatório.", "erro")
+        return redirect(url_for('index'))
+
+    nova_pousada = pousada(nome=nome)
+    db.session.add(nova_pousada)
+    db.session.commit()
+    flash("Pousada adicionada com sucesso!", "sucesso")
+    return redirect(url_for('index'))
+
+@app.route('/remover-acomodacao/<int:acomodacao_id>')
+@login_required
+@poverty
+def remover_acomodacao(acomodacao_id):
+    if current_user.role != 'admin':
+        flash("Acesso negado. Apenas administradores podem remover acomodações.", "erro")
+        return redirect(url_for('index'))
+
+    acomodacao_obj = acomodacao.query.get(acomodacao_id)
+    if acomodacao_obj:
+        if acomodacao_obj.reservas:
+            flash("Não é possível remover acomodação com reservas ativas.", "erro")
+        else:
+            db.session.delete(acomodacao_obj)
+            db.session.commit()
+            flash("Acomodação removida com sucesso.", "sucesso")
+    else:
+        flash("Acomodação não encontrada.", "erro")
+    return redirect(url_for('index'))
+
+
+# --- OPERAÇÕES DE CHECK-IN, CHECK-OUT E PAGAMENTO ---
+
 @app.route('/confirmar-checkin/<int:reserva_id>')
+@login_required
 @poverty
 def confirmar_checkin(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
@@ -178,6 +305,7 @@ def confirmar_checkin(reserva_id):
     return redirect(url_for('reservas_page'))
 
 @app.route('/confirmar-checkout/<int:reserva_id>')
+@login_required
 @poverty
 def confirmar_checkout(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
@@ -190,6 +318,7 @@ def confirmar_checkout(reserva_id):
     return redirect(url_for('reservas_page'))
 
 @app.route('/confirmar-pagamento/<int:reserva_id>', methods=['POST'])
+@login_required
 @poverty
 def confirmar_pagamento(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
@@ -216,12 +345,15 @@ def confirmar_pagamento(reserva_id):
     return redirect(url_for('reservas_page'))
 
 @app.route('/comprovante/<filename>')
+@login_required
 def download_comprovante(filename):
     filename = secure_filename(filename)
     if not filename:
         abort(404)
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
+
 @app.route('/remover-confirmacao-checkin/<int:reserva_id>')
+@login_required
 @poverty
 def remover_confirmacao_checkin(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
@@ -234,6 +366,7 @@ def remover_confirmacao_checkin(reserva_id):
     return redirect(url_for('reservas_page'))
 
 @app.route('/remover-confirmacao-checkout/<int:reserva_id>')
+@login_required
 @poverty
 def remover_confirmacao_checkout(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
@@ -246,11 +379,11 @@ def remover_confirmacao_checkout(reserva_id):
     return redirect(url_for('reservas_page'))
 
 @app.route('/remover-confirmacao-pagamento/<int:reserva_id>')
+@login_required
 @poverty
 def remover_confirmacao_pagamento(reserva_id):
     reserva_obj = reserva.query.get(reserva_id)
     if reserva_obj:
-        # remove stored PDF file if exists
         if reserva_obj.comprovante_pagamento:
             try:
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], reserva_obj.comprovante_pagamento)
@@ -266,69 +399,28 @@ def remover_confirmacao_pagamento(reserva_id):
         flash("Reserva não encontrada.", "erro")
     return redirect(url_for('reservas_page'))
 
-
 @app.route('/pagamento')
+@login_required
 def pagamento_page():
     reservas = reserva.query.order_by(reserva.data_entrada.desc()).all()
     return render_template('pagamento.html', reservas=reservas)
 
-@app.route('/adicionar-acomodacao', methods=['POST'])
-@poverty
-def adicionar_acomodacao():
-    try:
-        pousada_id = int(request.form['pousada_id'])
-        nome_numero = request.form['nome_numero'].strip()
-        tipo = request.form['tipo']
-        preco_diaria = float(request.form['preco_diaria'])
 
-        if not nome_numero or preco_diaria <= 0:
-            raise ValueError
+# --- ROTA SEED (CONFIGURAÇÃO INICIAL) ---
 
-        nova_acomodacao = acomodacao(
-            pousada_id=pousada_id,
-            nome_numero=nome_numero,
-            tipo=tipo,
-            preco_diaria=preco_diaria
-        )
-        db.session.add(nova_acomodacao)
-        db.session.commit()
-        flash("Acomodação adicionada com sucesso!", "sucesso")
-    except (ValueError, KeyError):
-        flash("Preencha corretamente todos os campos da acomodação.", "erro")
-    return redirect(url_for('index'))
-
-@app.route('/adicionar-pousada', methods=['POST'])
-@poverty
-def adicionar_pousada():
-    nome = request.form.get('nome', '').strip()
-    if not nome:
-        flash("O nome da pousada é obrigatório.", "erro")
-        return redirect(url_for('index'))
-
-    nova_pousada = pousada(nome=nome)
-    db.session.add(nova_pousada)
-    db.session.commit()
-    flash("Pousada adicionada com sucesso!", "sucesso")
-    return redirect(url_for('index'))
-
-@app.route('/remover-acomodacao/<int:acomodacao_id>')
-@poverty
-def remover_acomodacao(acomodacao_id):
-    acomodacao_obj = acomodacao.query.get(acomodacao_id)
-    if acomodacao_obj:
-        if acomodacao_obj.reservas:
-            flash("Não é possível remover acomodação com reservas ativas.", "erro")
-        else:
-            db.session.delete(acomodacao_obj)
-            db.session.commit()
-            flash("Acomodação removida com sucesso.", "sucesso")
-    else:
-        flash("Acomodação não encontrada.", "erro")
-    return redirect(url_for('index'))
-
-# ROTA AUXILIAR: Acesse uma vez no navegador para criar dados de teste
 @app.route('/seed')
 def seed():
+    logs_seed = []
+    
+    # 1. Garante a existência do usuário Admin padrão
+    if not Usuario.query.filter_by(username='admin').first():
+        admin = Usuario(username='admin', role='admin')
+        admin.set_password('123456')  # Altere após o primeiro acesso
+        db.session.add(admin)
+        db.session.commit()
+        logs_seed.append("Usuário 'admin' criado (senha padrão: 123456).")
+
+    # 2. Popula dados de demonstração de pousadas e quartos se vazios
     if not pousada.query.first():
         p1 = pousada(nome="Pousada do Sol (Centro)")
         p2 = pousada(nome="Pousada Maré Alta (Beira-Mar)")
@@ -340,24 +432,12 @@ def seed():
         a3 = acomodacao(pousada_id=p2.id, nome_numero="Chalé Frente Mar 01", tipo="casa", preco_diaria=450.0)
         db.session.add_all([a1, a2, a3])
         db.session.commit()
-        return "Banco de dados populado com sucesso!"
-    return "O banco já possui dados."
+        logs_seed.append("Estruturas de pousadas e acomodações populadas.")
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        usuario = Usuario.query.filter_by(username=request.form['username']).first()
-        if usuario and usuario.check_password(request.form['password']):
-            login_user(usuario)
-            return redirect(url_for('index'))
-        flash("Usuário ou senha inválidos", "erro")
-    return render_template('login.html')
+    if logs_seed:
+        return "<br>".join(logs_seed)
+    return "O banco já possui dados estruturados e usuários configurados."
 
-@app.route('/logout')
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
