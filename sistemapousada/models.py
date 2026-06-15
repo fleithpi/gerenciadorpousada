@@ -4,8 +4,12 @@ from sistemapousada.database import db
 
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
+    # Corrigido: nullable=False em vez de callable=False
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200)), nullable==False
+    # Corrigido: parênteses no lugar certo e nullable=False em vez de nullable==False
+    password_hash = db.Column(db.String(200), nullable=False)
+    # Adicionado: coluna 'role' para diferenciar admin de cliente
+    role = db.Column(db.String(20), nullable=False, default='cliente')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
