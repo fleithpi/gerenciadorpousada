@@ -138,7 +138,7 @@
                                         <td class="px-4 py-3">
                                             <div class="flex flex-col gap-2 text-sm">
                                                 <span class="inline-flex items-center gap-2">
-                                                    <span class="text-emerald-500">✅</span>
+                                                    
                                                     <span class="font-semibold">Check-in</span>
                                                     {% if reserva.checkin_confirmado %}
                                                         <span class="text-emerald-600">confirmado</span>
@@ -166,7 +166,7 @@
                                                     <a href="{{ url_for('remover_confirmacao_checkout', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</a>
                                                 {% endif %}
                                                 <span class="inline-flex items-center gap-2">
-                                                    <span class="text-yellow-500">💳</span>
+                                                 
                                                     <span class="font-semibold">Pagamento</span>
                                                     {% if reserva.pagamento_confirmado %}
                                                         <span class="text-emerald-600">confirmado</span>
