@@ -1,7 +1,7 @@
 import os
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask import Flask, render_template, request, redirect, flash, url_for, send_from_directory, abort
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from functools import wraps
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
@@ -62,13 +62,6 @@ with app.app_context():
         db.session.commit()
     except Exception:
         db.session.rollback()
-
-    # Migração automática: adiciona a coluna usuario_id na tabela reserva se não existir
-    try:
-        db.session.execute(text("ALTER TABLE reserva ADD COLUMN usuario_id INTEGER;"))
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
     
     # Cria um Admin padrão se não existir nenhum utilizador
     if not Usuario.query.first():
@@ -99,41 +92,46 @@ def allowed_file(filename):
 @app.route('/')
 @login_required
 def index():
-    # Busca apenas as pousadas pertencentes ao administrador logado
-    minhas_pousadas = pousada.query.filter_by(usuario_id=current_user.id).all()
-    pousada_ids = [p.id for p in minhas_pousadas]
-    
-    # Filtra as acomodações apenas das pousadas deste admin
-    acomodacoes = acomodacao.query.filter(acomodacao.pousada_id.in_(pousada_ids)).all() if pousada_ids else []
-    acomodacao_ids = [a.id for a in acomodacoes]
-    
-    # Filtra apenas as reservas associadas a este utilizador
-    reservas = reserva.query.filter_by(usuario_id=current_user.id).all()
+    try:
+        # Busca apenas as pousadas pertencentes ao administrador logado
+        minhas_pousadas = pousada.query.filter_by(usuario_id=current_user.id).all()
+        pousada_ids = [p.id for p in minhas_pousadas]
         
-    # Métricas para os cards do topo do painel
-    total_pousadas = len(minhas_pousadas)
-    total_acomodacoes = len(acomodacoes)
-    total_reservas = len(reservas)
-    
-    # Dados para o gráfico de barras (Chart.js)
-    chart_labels = []
-    chart_values = []
-    for p in minhas_pousadas:
-        chart_labels.append(p.nome)
-        count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id, reserva.usuario_id == current_user.id).count()
-        chart_values.append(count_res)
+        # Filtra as acomodações apenas das pousadas deste admin
+        acomodacoes = acomodacao.query.filter(acomodacao.pousada_id.in_(pousada_ids)).all() if pousada_ids else []
+        acomodacao_ids = [a.id for a in acomodacoes]
+        
+        # Filtra apenas as reservas associadas às acomodações deste admin
+        reservas = reserva.query.filter(reserva.acomodacao_id.in_(acomodacao_ids)).all() if acomodacao_ids else []
+            
+        # Métricas para os cards do topo do painel
+        total_pousadas = len(minhas_pousadas)
+        total_acomodacoes = len(acomodacoes)
+        total_reservas = len(reservas)
+        
+        # Dados para o gráfico de barras (Chart.js)
+        chart_labels = []
+        chart_values = []
+        for p in minhas_pousadas:
+            chart_labels.append(p.nome)
+            count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id).count()
+            chart_values.append(count_res)
 
-    return render_template(
-        'index.html', 
-        pousadas=minhas_pousadas, 
-        acomodacoes=acomodacoes, 
-        reservas=reservas,
-        total_pousadas=total_pousadas,
-        total_acomodacoes=total_acomodacoes,
-        total_reservas=total_reservas,
-        chart_labels=chart_labels,
-        chart_values=chart_values
-    )
+        return render_template(
+            'index.html', 
+            pousadas=minhas_pousadas, 
+            acomodacoes=acomodacoes, 
+            reservas=reservas,
+            total_pousadas=total_pousadas,
+            total_acomodacoes=total_acomodacoes,
+            total_reservas=total_reservas,
+            chart_labels=chart_labels,
+            chart_values=chart_values
+        )
+    except Exception as e:
+        app.logger.error(f"Erro na rota index: {e}")
+        flash(f"Erro ao carregar painel: {e}", "erro")
+        return render_template('index.html', pousadas=[], acomodacoes=[], reservas=[], total_pousadas=0, total_acomodacoes=0, total_reservas=0, chart_labels=[], chart_values=[])
 
 
 # --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
@@ -219,61 +217,65 @@ def logout():
 @app.route('/reservar', methods=['POST'])
 @login_required
 def reservar():
-    acomodacao_id = request.form.get('acomodacao_id')
-    hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome')
-    data_entrada_str = request.form.get('data_entrada')
-    data_saida_str = request.form.get('data_saida')
-    
     try:
-        data_entrada = datetime.strptime(data_entrada_str, '%Y-%m-%d').date()
-        data_saida = datetime.strptime(data_saida_str, '%Y-%m-%d').date()
-    except ValueError:
-        flash("Formato de data inválido.", "erro")
-        return redirect(url_for('index'))
+        acomodacao_id = request.form.get('acomodacao_id')
+        hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome')
+        data_entrada_str = request.form.get('data_entrada')
+        data_saida_str = request.form.get('data_saida')
+        
+        try:
+            data_entrada = datetime.strptime(data_entrada_str, '%Y-%m-%d').date()
+            data_saida = datetime.strptime(data_saida_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash("Formato de data inválido.", "erro")
+            return redirect(url_for('index'))
 
-    if data_entrada >= data_saida:
-        flash("A data de check-out deve ser posterior à data de check-in.", "erro")
-        return redirect(url_for('index'))
+        if data_entrada >= data_saida:
+            flash("A data de check-out deve ser posterior à data de check-in.", "erro")
+            return redirect(url_for('index'))
 
-    # Valida disponibilidade
-    if not reserva.verificar_disponibilidade(acomodacao_id, data_entrada, data_saida):
-        flash("Acomodação indisponível para o período selecionado.", "erro")
-        return redirect(url_for('index'))
+        # Valida disponibilidade
+        if not reserva.verificar_disponibilidade(acomodacao_id, data_entrada, data_saida):
+            flash("Acomodação indisponível para o período selecionado.", "erro")
+            return redirect(url_for('index'))
 
-    # Segurança: Confirma que a acomodação pertence a uma pousada do admin logado
-    acomod_obj = acomodacao.query.get_or_404(acomodacao_id)
-    pousada_pertence = pousada.query.filter_by(id=acomod_obj.pousada_id, usuario_id=current_user.id).first()
-    if not pousada_pertence:
-        flash("Acomodação inválida.", "erro")
-        return redirect(url_for('index'))
+        acomod_obj = acomodacao.query.get_or_404(acomodacao_id)
+        pousada_pertence = pousada.query.filter_by(id=acomod_obj.pousada_id, usuario_id=current_user.id).first()
+        if not pousada_pertence:
+            flash("Acomodação inválida.", "erro")
+            return redirect(url_for('index'))
 
-    dias = (data_saida - data_entrada).days
-    valor_total = dias * acomod_obj.preco_diaria
+        dias = (data_saida - data_entrada).days
+        valor_total = dias * acomod_obj.preco_diaria
 
-    nova_reserva = reserva(
-        usuario_id=current_user.id, # <--- ASSOCIADO AO UTILIZADOR LOGADO
-        acomodacao_id=acomodacao_id,
-        hospede_nome=hospede_nome,
-        data_entrada=data_entrada,
-        data_saida=data_saida,
-        valor_total=float(valor_total)
-    )
-    
-    db.session.add(nova_reserva)
-    db.session.commit()
-    
-    flash("Reserva criada com sucesso!", "sucesso")
+        nova_reserva = reserva(
+            acomodacao_id=acomodacao_id,
+            hospede_nome=hospede_nome,
+            data_entrada=data_entrada,
+            data_saida=data_saida,
+            valor_total=float(valor_total)
+        )
+        
+        db.session.add(nova_reserva)
+        db.session.commit()
+        flash("Reserva criada com sucesso!", "sucesso")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao criar reserva: {e}", "erro")
+        
     return redirect(url_for('index'))
 
 @app.route('/editar_reserva/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_reserva(id):
-    reserva_item = reserva.query.filter_by(id=id, usuario_id=current_user.id).first_or_404()
+    reserva_item = reserva.query.get_or_404(id)
+    pousada_pertence = pousada.query.filter_by(id=reserva_item.acomodacao.pousada_id, usuario_id=current_user.id).first()
+    if not pousada_pertence:
+        abort(403)
     
     if request.method == 'POST':
         reserva_item.hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome', reserva_item.hospede_nome)
         db.session.commit()
-        
         flash("Reserva atualizada com sucesso!", "sucesso")
         return redirect(url_for('index'))
         
@@ -282,7 +284,10 @@ def editar_reserva(id):
 @app.route('/remover-reserva/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
 def remover_reserva(reserva_id):
-    reserva_item = reserva.query.filter_by(id=reserva_id, usuario_id=current_user.id).first_or_404()
+    reserva_item = reserva.query.get_or_404(reserva_id)
+    pousada_pertence = pousada.query.filter_by(id=reserva_item.acomodacao.pousada_id, usuario_id=current_user.id).first()
+    if not pousada_pertence:
+        abort(403)
     
     try:
         db.session.delete(reserva_item)
@@ -311,7 +316,6 @@ def adicionar_acomodacao():
         tipo = request.form.get('tipo')
         preco_diaria_str = request.form.get('preco_diaria')
         
-        # Segurança: Garante que a pousada pertence ao admin logado
         pousada_pertence = pousada.query.filter_by(id=pousada_id, usuario_id=current_user.id).first()
         if not pousada_pertence:
             flash("Acesso negado ou pousada inválida.", "erro")
@@ -331,12 +335,9 @@ def adicionar_acomodacao():
         
         db.session.add(nova_acomod)
         db.session.commit()
-        
         flash("Acomodação cadastrada com sucesso!", "sucesso")
-        
     except Exception as e:
         db.session.rollback()
-        app.logger.error(f"Erro ao adicionar acomodação: {e}")
         flash(f"Erro ao cadastrar acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
@@ -345,20 +346,20 @@ def adicionar_acomodacao():
 @login_required
 def remover_acomodacao(acomodacao_id):
     acomodacao_item = acomodacao.query.get_or_404(acomodacao_id)
-    
-    # Segurança: Verifica se a acomodação pertence a uma pousada do admin logado
     pousada_pertence = pousada.query.filter_by(id=acomodacao_item.pousada_id, usuario_id=current_user.id).first()
     if not pousada_pertence:
         flash("Acesso negado.", "erro")
         return redirect(url_for('index'))
     
     try:
+        # Remove primeiro as reservas associadas para evitar conflito de chave estrangeira
+        reserva.query.filter_by(acomodacao_id=acomodacao_item.id).delete()
         db.session.delete(acomodacao_item)
         db.session.commit()
         flash("Acomodação removida com sucesso!", "sucesso")
     except Exception as e:
         db.session.rollback()
-        flash(f"Erro ao remover acomodação (certifique-se de apagar as reservas associadas primeiro): {e}", "erro")
+        flash(f"Erro ao remover acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
 
@@ -369,7 +370,6 @@ def remover_acomodacao(acomodacao_id):
 @login_required
 def adicionar_pousada():
     nome = request.form.get('nome')
-    
     if not nome:
         flash("O nome da pousada é obrigatório.", "erro")
         return redirect(url_for('index'))
@@ -378,9 +378,41 @@ def adicionar_pousada():
         nome=nome,
         usuario_id=current_user.id
     )
-    
     db.session.add(nova_pousada)
     db.session.commit()
-    
     flash("Pousada cadastrada com sucesso!", "sucesso")
+    return redirect(url_for('index'))
+
+
+# --- ROTAS AUXILIARES DO MENU (Evitam erros 404/500 ao clicar nos atalhos) ---
+
+@app.route('/seed')
+@login_required
+def seed():
+    try:
+        # Cria dados de exemplo para o utilizador atual se desejar
+        p_exemplo = pousada.query.filter_by(usuario_id=current_user.id).first()
+        if not p_exemplo:
+            p_exemplo = pousada(nome="Pousada Exemplo", usuario_id=current_user.id)
+            db.session.add(p_exemplo)
+            db.session.commit()
+            
+        if not acomodacao.query.filter_by(pousada_id=p_exemplo.id).first():
+            ac_exemplo = acomodacao(pousada_id=p_exemplo.id, nome_numero="Quarto 101", tipo="quarto", preco_diaria=150.0)
+            db.session.add(ac_exemplo)
+            db.session.commit()
+            
+        flash("Dados de exemplo carregados com sucesso!", "sucesso")
+    except Exception as e:
+        flash(f"Erro ao popular dados: {e}", "erro")
+    return redirect(url_for('index'))
+
+@app.route('/reservas')
+@login_required
+def gerenciar_reservas():
+    return redirect(url_for('index'))
+
+@app.route('/pagamento')
+@login_required
+def gerenciar_pagamentos():
     return redirect(url_for('index'))
