@@ -138,3 +138,37 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+
+# --- ROTAS DE GESTÃO DE RESERVAS (Permitidas para qualquer utilizador logado) ---
+
+@app.route('/editar_reserva/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_reserva(id):
+    reserva_item = reserva.query.get_or_404(id)
+    
+    # Se houver formulário de edição, processe aqui
+    if request.method == 'POST':
+        # Atualize os campos necessários da reserva com base no request.form
+        reserva_item.hospede_nome = request.form.get('hospede_nome', reserva_item.hospede_nome)
+        # (Adicione os outros campos conforme o seu formulário de edição)
+        
+        db.session.commit()
+        flash("Reserva atualizada com sucesso!", "sucesso")
+        return redirect(url_for('index')) # Ajuste para a sua rota principal
+        
+    return render_template('editar_reserva.html', reserva=reserva_item)
+
+@app.route('/deletar_reserva/<int:id>', methods=['POST', 'GET'])
+@login_required
+def deletar_reserva(id):
+    # ATENÇÃO: Certifique-se de que NÃO existe nenhuma verificação de 'admin' aqui dentro.
+    # Qualquer utilizador autenticado agora pode remover a reserva.
+    
+    reserva_item = reserva.query.get_or_404(id)
+    
+    db.session.delete(reserva_item)
+    db.session.commit()
+    
+    flash("Reserva removida com sucesso!", "sucesso")
+    return redirect(url_for('index')) # Ajuste para a sua rota principal
