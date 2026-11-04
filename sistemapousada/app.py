@@ -11,7 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sistemapousada.database import db
 from sistemapousada.models import Usuario, pousada, acomodacao, reserva
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 
 # Configuração da URL do banco de dados 
 database_url = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
