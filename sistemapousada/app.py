@@ -87,7 +87,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# --- ROTA PRINCIPAL (Isolada: Mostra apenas os dados da pousada do admin logado) ---
+# --- ROTA PRINCIPAL (Isolada por utilizador com métricas e gráficos) ---
 
 @app.route('/')
 @login_required
@@ -103,7 +103,30 @@ def index():
     # Filtra apenas as reservas associadas às acomodações deste admin
     reservas = reserva.query.filter(reserva.acomodacao_id.in_(acomodacao_ids)).all() if acomodacao_ids else []
         
-    return render_template('index.html', pousadas=minhas_pousadas, acomodacoes=acomodacoes, reservas=reservas)
+    # Métricas para os cards do topo do painel
+    total_pousadas = len(minhas_pousadas)
+    total_acomodacoes = len(acomodacoes)
+    total_reservas = len(reservas)
+    
+    # Dados para o gráfico de barras (Chart.js)
+    chart_labels = []
+    chart_values = []
+    for p in minhas_pousadas:
+        chart_labels.append(p.nome)
+        count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id).count()
+        chart_values.append(count_res)
+
+    return render_template(
+        'index.html', 
+        pousadas=minhas_pousadas, 
+        acomodacoes=acomodacoes, 
+        reservas=reservas,
+        total_pousadas=total_pousadas,
+        total_acomodacoes=total_acomodacoes,
+        total_reservas=total_reservas,
+        chart_labels=chart_labels,
+        chart_values=chart_values
+    )
 
 
 # --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
@@ -114,7 +137,7 @@ def login():
         return redirect(url_for('index'))
         
     if request.method == 'POST':
-        login_input = request.form['username'] # Aceita username ou e-mail
+        login_input = request.form['username']
         senha_input = request.form['password']
         
         usuario = Usuario.query.filter(
@@ -154,7 +177,6 @@ def register():
             flash("Este e-mail ou nome de usuário já está em uso.", "erro")
             return redirect(url_for('register'))
             
-        # Cria o novo administrador/proprietário
         novo_usuario = Usuario(username=username, email=email, role='admin')
         
         if hasattr(novo_usuario, 'set_password'):
@@ -187,11 +209,11 @@ def logout():
 
 # --- ROTAS DE CRIAÇÃO E GESTÃO DE RESERVAS ---
 
-@app.route('/criar_reserva', methods=['POST'])
+@app.route('/reservar', methods=['POST'])
 @login_required
-def criar_reserva():
+def reservar():
     acomodacao_id = request.form.get('acomodacao_id')
-    hospede_nome = request.form.get('hospede_nome')
+    hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome')
     data_entrada_str = request.form.get('data_entrada')
     data_saida_str = request.form.get('data_saida')
     
@@ -202,17 +224,26 @@ def criar_reserva():
         flash("Formato de data inválido.", "erro")
         return redirect(url_for('index'))
 
+    if data_entrada >= data_saida:
+        flash("A data de check-out deve ser posterior à data de check-in.", "erro")
+        return redirect(url_for('index'))
+
     # Valida disponibilidade
     if not reserva.verificar_disponibilidade(acomodacao_id, data_entrada, data_saida):
         flash("Acomodação indisponível para o período selecionado.", "erro")
         return redirect(url_for('index'))
+
+    # Busca a acomodação para calcular o valor total automaticamente
+    acomod_obj = acomodacao.query.get_or_404(acomodacao_id)
+    dias = (data_saida - data_entrada).days
+    valor_total = dias * acomod_obj.preco_diaria
 
     nova_reserva = reserva(
         acomodacao_id=acomodacao_id,
         hospede_nome=hospede_nome,
         data_entrada=data_entrada,
         data_saida=data_saida,
-        valor_total=float(request.form.get('valor_total', 0.0))
+        valor_total=float(valor_total)
     )
     
     db.session.add(nova_reserva)
@@ -227,7 +258,7 @@ def editar_reserva(id):
     reserva_item = reserva.query.get_or_404(id)
     
     if request.method == 'POST':
-        reserva_item.hospede_nome = request.form.get('hospede_nome', reserva_item.hospede_nome)
+        reserva_item.hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome', reserva_item.hospede_nome)
         db.session.commit()
         
         flash("Reserva atualizada com sucesso!", "sucesso")
@@ -235,10 +266,10 @@ def editar_reserva(id):
         
     return render_template('editar_reserva.html', reserva=reserva_item)
 
-@app.route('/deletar_reserva/<int:id>', methods=['POST', 'GET'])
+@app.route('/remover-reserva/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
-def deletar_reserva(id):
-    reserva_item = reserva.query.get_or_404(id)
+def remover_reserva(reserva_id):
+    reserva_item = reserva.query.get_or_404(reserva_id)
     
     try:
         db.session.delete(reserva_item)
@@ -253,52 +284,15 @@ def deletar_reserva(id):
 
 # --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
 
-@app.route('/deletar_acomodacao/<int:id>', methods=['POST', 'GET'])
+@app.route('/adicionar-acomodacao', methods=['POST'])
 @login_required
-def deletar_acomodacao(id):
-    acomodacao_item = acomodacao.query.get_or_404(id)
-    
-    try:
-        db.session.delete(acomodacao_item)
-        db.session.commit()
-        flash("Acomodação removida com sucesso!", "sucesso")
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Erro ao remover acomodação: {e}", "erro")
-        
-    return redirect(url_for('index'))
-
-# --- ROTAS DE CRIAÇÃO DE POUSADA E ACOMODAÇÃO ---
-
-@app.route('/criar_pousada', methods=['POST'])
-@login_required
-def criar_pousada():
-    nome = request.form.get('nome')
-    
-    if not nome:
-        flash("O nome da pousada é obrigatório.", "erro")
-        return redirect(url_for('index'))
-        
-    nova_pousada = pousada(
-        nome=nome,
-        usuario_id=current_user.id # Associa a pousada diretamente ao dono logado
-    )
-    
-    db.session.add(nova_pousada)
-    db.session.commit()
-    
-    flash("Pousada cadastrada com sucesso!", "sucesso")
-    return redirect(url_for('index'))
-
-@app.route('/criar_acomodacao', methods=['POST'])
-@login_required
-def criar_acomodacao():
+def adicionar_acomodacao():
     pousada_id = request.form.get('pousada_id')
     nome_numero = request.form.get('nome_numero')
     tipo = request.form.get('tipo')
     preco_diaria_str = request.form.get('preco_diaria')
     
-    # Segurança: Garante que a pousada onde está a adicionar a acomodação pertence realmente ao admin logado
+    # Segurança: Garante que a pousada pertence ao admin logado
     pousada_pertence = pousada.query.filter_by(id=pousada_id, usuario_id=current_user.id).first()
     if not pousada_pertence:
         flash("Acesso negado ou pousada inválida.", "erro")
@@ -320,4 +314,42 @@ def criar_acomodacao():
     db.session.commit()
     
     flash("Acomodação cadastrada com sucesso!", "sucesso")
+    return redirect(url_for('index'))
+
+@app.route('/remover-acomodacao/<int:acomodacao_id>', methods=['GET', 'POST'])
+@login_required
+def remover_acomodacao(acomodacao_id):
+    acomodacao_item = acomodacao.query.get_or_404(acomodacao_id)
+    
+    try:
+        db.session.delete(acomodacao_item)
+        db.session.commit()
+        flash("Acomodação removida com sucesso!", "sucesso")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao remover acomodação (certifique-se de apagar as reservas associadas primeiro): {e}", "erro")
+        
+    return redirect(url_for('index'))
+
+
+# --- ROTAS DE CRIAÇÃO DE POUSADAS ---
+
+@app.route('/adicionar-pousada', methods=['POST'])
+@login_required
+def adicionar_pousada():
+    nome = request.form.get('nome')
+    
+    if not nome:
+        flash("O nome da pousada é obrigatório.", "erro")
+        return redirect(url_for('index'))
+        
+    nova_pousada = pousada(
+        nome=nome,
+        usuario_id=current_user.id
+    )
+    
+    db.session.add(nova_pousada)
+    db.session.commit()
+    
+    flash("Pousada cadastrada com sucesso!", "sucesso")
     return redirect(url_for('index'))
