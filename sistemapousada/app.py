@@ -284,53 +284,51 @@ def remover_reserva(reserva_id):
 
 # --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
 
+# --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
+
 @app.route('/adicionar-acomodacao', methods=['POST'])
 @login_required
 def adicionar_acomodacao():
-    pousada_id = request.form.get('pousada_id')
-    nome_numero = request.form.get('nome_numero')
-    tipo = request.form.get('tipo')
-    preco_diaria_str = request.form.get('preco_diaria')
-    
-    # Segurança: Garante que a pousada pertence ao admin logado
-    pousada_pertence = pousada.query.filter_by(id=pousada_id, usuario_id=current_user.id).first()
-    if not pousada_pertence:
-        flash("Acesso negado ou pousada inválida.", "erro")
-        return redirect(url_for('index'))
+    try:
+        pousada_id_raw = request.form.get('pousada_id')
+        if not pousada_id_raw:
+            flash("Selecione uma pousada válida.", "erro")
+            return redirect(url_for('index'))
+            
+        pousada_id = int(pousada_id_raw)
+        nome_numero = request.form.get('nome_numero')
+        tipo = request.form.get('tipo')
+        preco_diaria_str = request.form.get('preco_diaria')
         
-    try:
-        preco_diaria = float(preco_diaria_str)
-    except (ValueError, TypeError):
-        preco_diaria = 0.0
+        # Segurança: Garante que a pousada pertence ao admin logado
+        pousada_pertence = pousada.query.filter_by(id=pousada_id, usuario_id=current_user.id).first()
+        if not pousada_pertence:
+            flash("Acesso negado ou pousada inválida.", "erro")
+            return redirect(url_for('index'))
+            
+        try:
+            preco_diaria = float(preco_diaria_str)
+        except (ValueError, TypeError):
+            preco_diaria = 0.0
 
-    nova_acomod = acomodacao(
-        pousada_id=pousada_id,
-        nome_numero=nome_numero,
-        tipo=tipo,
-        preco_diaria=preco_diaria
-    )
-    
-    db.session.add(nova_acomod)
-    db.session.commit()
-    
-    flash("Acomodação cadastrada com sucesso!", "sucesso")
-    return redirect(url_for('index'))
-
-@app.route('/remover-acomodacao/<int:acomodacao_id>', methods=['GET', 'POST'])
-@login_required
-def remover_acomodacao(acomodacao_id):
-    acomodacao_item = acomodacao.query.get_or_404(acomodacao_id)
-    
-    try:
-        db.session.delete(acomodacao_item)
+        nova_acomod = acomodacao(
+            pousada_id=pousada_id,
+            nome_numero=nome_numero,
+            tipo=tipo,
+            preco_diaria=preco_diaria
+        )
+        
+        db.session.add(nova_acomod)
         db.session.commit()
-        flash("Acomodação removida com sucesso!", "sucesso")
+        
+        flash("Acomodação cadastrada com sucesso!", "sucesso")
+        
     except Exception as e:
         db.session.rollback()
-        flash(f"Erro ao remover acomodação (certifique-se de apagar as reservas associadas primeiro): {e}", "erro")
+        app.logger.error(f"Erro ao adicionar acomodação: {e}")
+        flash(f"Erro ao cadastrar acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
-
 
 # --- ROTAS DE CRIAÇÃO DE POUSADAS ---
 
