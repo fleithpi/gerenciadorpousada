@@ -267,3 +267,57 @@ def deletar_acomodacao(id):
         flash(f"Erro ao remover acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
+
+# --- ROTAS DE CRIAÇÃO DE POUSADA E ACOMODAÇÃO ---
+
+@app.route('/criar_pousada', methods=['POST'])
+@login_required
+def criar_pousada():
+    nome = request.form.get('nome')
+    
+    if not nome:
+        flash("O nome da pousada é obrigatório.", "erro")
+        return redirect(url_for('index'))
+        
+    nova_pousada = pousada(
+        nome=nome,
+        usuario_id=current_user.id # Associa a pousada diretamente ao dono logado
+    )
+    
+    db.session.add(nova_pousada)
+    db.session.commit()
+    
+    flash("Pousada cadastrada com sucesso!", "sucesso")
+    return redirect(url_for('index'))
+
+@app.route('/criar_acomodacao', methods=['POST'])
+@login_required
+def criar_acomodacao():
+    pousada_id = request.form.get('pousada_id')
+    nome_numero = request.form.get('nome_numero')
+    tipo = request.form.get('tipo')
+    preco_diaria_str = request.form.get('preco_diaria')
+    
+    # Segurança: Garante que a pousada onde está a adicionar a acomodação pertence realmente ao admin logado
+    pousada_pertence = pousada.query.filter_by(id=pousada_id, usuario_id=current_user.id).first()
+    if not pousada_pertence:
+        flash("Acesso negado ou pousada inválida.", "erro")
+        return redirect(url_for('index'))
+        
+    try:
+        preco_diaria = float(preco_diaria_str)
+    except (ValueError, TypeError):
+        preco_diaria = 0.0
+
+    nova_acomod = acomodacao(
+        pousada_id=pousada_id,
+        nome_numero=nome_numero,
+        tipo=tipo,
+        preco_diaria=preco_diaria
+    )
+    
+    db.session.add(nova_acomod)
+    db.session.commit()
+    
+    flash("Acomodação cadastrada com sucesso!", "sucesso")
+    return redirect(url_for('index'))
