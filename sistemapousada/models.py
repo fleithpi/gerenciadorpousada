@@ -5,9 +5,12 @@ from sistemapousada.database import db
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=True) # <-- Adicionado para suportar o cadastro por e-mail
+    email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='cliente') # 'cliente' ou 'admin'
+    role = db.Column(db.String(20), nullable=False, default='cliente')
+    
+    # Relação para que cada utilizador tenha acesso direto às suas reservas
+    reservas = db.relationship('reserva', backref='usuario', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
@@ -18,7 +21,7 @@ class Usuario(db.Model, UserMixin):
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
-    acomodacoes = db.relationship('acomodacao', backref='pousada', lazy=True)
+    acomodacoes = db.relationship('acomodacao', backref='pousada', lazy=True, cascade="all, delete-orphan")
 
 class acomodacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -29,6 +32,9 @@ class acomodacao(db.Model):
 
 class reserva(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    # Vínculo obrigatório com o utilizador logado
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
     acomodacao_id = db.Column(db.Integer, db.ForeignKey('acomodacao.id'), nullable=False)
     acomodacao = db.relationship('acomodacao', backref='reservas', lazy=True)
     hospede_nome = db.Column(db.String(100), nullable=False)
@@ -37,15 +43,14 @@ class reserva(db.Model):
     valor_total = db.Column(db.Float, nullable=False)
     checkin_confirmado = db.Column(db.Boolean, default=False, nullable=False)
     checkout_confirmado = db.Column(db.Boolean, default=False, nullable=False)
-    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False) # <-- Mantido apenas uma vez
+    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False)
     comprovante_pagamento = db.Column(db.String(200), nullable=True)
 
     @staticmethod
     def verificar_disponibilidade(acomodacao_id, entrada, saida):
-        # Lógica matemática: verifica se as datas se cruzam
         conflito = reserva.query.filter(
             reserva.acomodacao_id == acomodacao_id,
             entrada < reserva.data_saida,
             saida > reserva.data_entrada
         ).first()
-        return conflito is None # Retorna True se estiver livre
+        return conflito is None
