@@ -7,10 +7,10 @@ class Usuario(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='cliente') # 'cliente' ou 'admin'
+    role = db.Column(db.String(20), nullable=False, default='admin')
     
-    # Relacionamento para aceder diretamente às reservas do utilizador
-    reservas = db.relationship('reserva', backref='usuario', lazy=True, cascade="all, delete-orphan")
+    # Cada administrador tem as suas próprias pousadas
+    pousadas = db.relationship('pousada', backref='proprietario', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
@@ -20,7 +20,9 @@ class Usuario(db.Model, UserMixin):
                         
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    # CHAVE ESTRANGEIRA: Identifica qual administrador é dono desta pousada
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    
     nome = db.Column(db.String(100), nullable=False)
     acomodacoes = db.relationship('acomodacao', backref='pousada', lazy=True, cascade="all, delete-orphan")
 
@@ -33,10 +35,6 @@ class acomodacao(db.Model):
 
 class reserva(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    
-    # CHAVE ESTRANGEIRA OBRIGATÓRIA: Identifica de quem é a reserva
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    
     acomodacao_id = db.Column(db.Integer, db.ForeignKey('acomodacao.id'), nullable=False)
     acomodacao = db.relationship('acomodacao', backref='reservas', lazy=True)
     hospede_nome = db.Column(db.String(100), nullable=False)
