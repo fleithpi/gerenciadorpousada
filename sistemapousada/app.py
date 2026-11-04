@@ -218,7 +218,14 @@ def logout():
 @login_required
 def reservar():
     try:
-        acomodacao_id = request.form.get('acomodacao_id')
+        # CONVERTE O ID PARA INTEIRO AQUI
+        acomodacao_id_raw = request.form.get('acomodacao_id')
+        if not acomodacao_id_raw:
+            flash("Selecione uma acomodação válida.", "erro")
+            return redirect(url_for('index'))
+            
+        acomodacao_id = int(acomodacao_id_raw) 
+        
         hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome')
         data_entrada_str = request.form.get('data_entrada')
         data_saida_str = request.form.get('data_saida')
