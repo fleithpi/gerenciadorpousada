@@ -5,6 +5,7 @@ from datetime import datetime, date
 from functools import wraps
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Importações internas do seu projeto
 from sistemapousada.database import db
@@ -12,10 +13,10 @@ from sistemapousada.models import Usuario, pousada, acomodacao, reserva
 
 app = Flask(__name__)
 
-# Configuração da URL do banco de dados (Tenta puxar a Neon/Render, senão usa SQLite local)
+# Configuração da URL do banco de dados 
+# (Usa SQLite localmente se DATABASE_URL não estiver definida, ou PostgreSQL no Render/Neon)
 database_url = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
 
-# Correção crucial para o SQLAlchemy aceitar o link do PostgreSQL do Render se começar com 'postgres://'
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
@@ -45,39 +46,28 @@ except Exception as e:
 ALLOWED_EXTENSIONS = {'pdf'}
 db.init_app(app)
 
-# Inicialização e criação limpa das tabelas no banco de dados (Compatível com PostgreSQL)
-# Inicialização e criação limpa das tabelas no banco de dados (Compatível com PostgreSQL)
+# Inicialização e criação limpa das tabelas no banco de dados
 with app.app_context():
-    db.create_all()  # Cria as tabelas se não existirem
+    db.create_all()  
     
     # Verifica se já existe algum usuário no sistema. Se não houver, cria um Admin padrão
     if not Usuario.query.first():
-        # Defina aqui os dados do seu admin inicial
         admin_user = Usuario(username="admin", email="admin@pousada.com")
         
-        # Dependendo de como o seu modelo Usuario define a senha (ajuste conforme o seu método):
         if hasattr(admin_user, 'set_password'):
             admin_user.set_password("sua_senha_segura_aqui")
         else:
-            from werkzeug.security import generate_password_hash
-            admin_user.senha = generate_password_hash("sua_senha_segura_aqui") # Ajuste 'senha' para o nome exato do campo no seu models.py
+            admin_user.senha = generate_password_hash("sua_senha_segura_aqui")
             
         db.session.add(admin_user)
         db.session.commit()
         print(">>> Administrador padrão criado automaticamente com sucesso!")
 
-def poverty(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        app.logger.debug(f"[poverty] executando {func.__name__}")
-        return func(*args, **kwargs)
-    return wrapper
-
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# --- ROTAS DE AUTENTICAÇÃO ---
+# --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -85,10 +75,66 @@ def login():
         return redirect(url_for('index'))
         
     if request.method == 'POST':
-        usuario = Usuario.query.filter_by(username=request.form['username']).first()
-        if usuario and usuario.check_password(request.form['password']):
+        login_input = request.form['username'] # Pode ser o username ou o e-mail
+        senha_input = request.form['password']
+        
+        # Procura por username ou email
+        usuario = Usuario.query.filter(
+            (Usuario.username == login_input) | (Usuario.email == login_input)
+        ).first()
+        
+        # Validação da senha (suporta método do model ou verificação direta do hash)
+        senha_valida = False
+        if usuario:
+            if hasattr(usuario, 'check_password'):
+                senha_valida = usuario.check_password(senha_input)
+            else:
+                senha_valida = check_password_hash(usuario.senha, senha_input)
+                
+        if usuario and senha_valida:
             login_user(usuario)
             return redirect(url_for('index'))
-        flash("Usuário ou senha inválidos", "erro")
+            
+        flash("E-mail/Usuário ou senha inválidos", "erro")
         
-    return render_template('login.html') # Ajuste para o nome do seu arquivo HTML de login, se for diferentes
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+        
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        
+        # Verifica se o e-mail ou username já existem
+        user_existente = Usuario.query.filter(
+            (Usuario.email == email) | (Usuario.username == username)
+        ).first()
+        
+        if user_existente:
+            flash("Este e-mail ou nome de usuário já está em uso.", "erro")
+            return redirect(url_for('register'))
+            
+        novo_usuario = Usuario(username=username, email=email)
+        
+        if hasattr(novo_usuario, 'set_password'):
+            novo_usuario.set_password(password)
+        else:
+            novo_usuario.senha = generate_password_hash(password)
+            
+        db.session.add(novo_usuario)
+        db.session.commit()
+        
+        flash("Cadastro realizado com sucesso! Faça o login.", "sucesso")
+        return redirect(url_for('login'))
+        
+    return render_template('register.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
