@@ -74,3 +74,5 @@ def login():
             login_user(usuario)
             return redirect(url_for('index'))
         flash("Usuário ou senha inválidos", "erro")
+        
+    return render_template('login.html') # Ajuste para o nome do seu arquivo HTML de login, se for diferentes
