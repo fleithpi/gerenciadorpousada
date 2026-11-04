@@ -49,9 +49,16 @@ db.init_app(app)
 with app.app_context():
     db.create_all()  
     
-    # Adiciona a coluna email automaticamente caso a tabela já exista sem ela
+    # Migração automática: adiciona a coluna email na tabela usuario se não existir
     try:
         db.session.execute(text("ALTER TABLE usuario ADD COLUMN email VARCHAR(120);"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    # Migração automática: adiciona a coluna usuario_id na tabela pousada se não existir
+    try:
+        db.session.execute(text("ALTER TABLE pousada ADD COLUMN usuario_id INTEGER;"))
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -67,24 +74,36 @@ with app.app_context():
             
         db.session.add(admin_user)
         db.session.commit()
-        print(">>> Administrador padrão criado automaticamente com sucesso!")
+        
+        # Cria uma pousada padrão para o admin inicial se ele não tiver nenhuma
+        if not pousada.query.filter_by(usuario_id=admin_user.id).first():
+            pousada_padrao = pousada(nome="Pousada Principal", usuario_id=admin_user.id)
+            db.session.add(pousada_padrao)
+            db.session.commit()
+
+        print(">>> Administrador e Pousada padrão criados automaticamente com sucesso!")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# --- ROTA PRINCIPAL (Lista apenas as reservas do utilizador logado) ---
+# --- ROTA PRINCIPAL (Isolada: Mostra apenas os dados da pousada do admin logado) ---
 
 @app.route('/')
 @login_required
 def index():
-    # Se for admin, pode ver todas as reservas; caso contrário, vê apenas as suas
-    if getattr(current_user, 'role', 'cliente') == 'admin':
-        reservas = reserva.query.all()
-    else:
-        reservas = reserva.query.filter_by(usuario_id=current_user.id).all()
+    # Busca apenas as pousadas pertencentes ao administrador logado
+    minhas_pousadas = pousada.query.filter_by(usuario_id=current_user.id).all()
+    pousada_ids = [p.id for p in minhas_pousadas]
+    
+    # Filtra as acomodações apenas das pousadas deste admin
+    acomodacoes = acomodacao.query.filter(acomodacao.pousada_id.in_(pousada_ids)).all() if pousada_ids else []
+    acomodacao_ids = [a.id for a in acomodacoes]
+    
+    # Filtra apenas as reservas associadas às acomodações deste admin
+    reservas = reserva.query.filter(reserva.acomodacao_id.in_(acomodacao_ids)).all() if acomodacao_ids else []
         
-    return render_template('index.html', reservas=reservas)
+    return render_template('index.html', pousadas=minhas_pousadas, acomodacoes=acomodacoes, reservas=reservas)
 
 
 # --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
@@ -135,7 +154,8 @@ def register():
             flash("Este e-mail ou nome de usuário já está em uso.", "erro")
             return redirect(url_for('register'))
             
-        novo_usuario = Usuario(username=username, email=email, role='cliente')
+        # Cria o novo administrador/proprietário
+        novo_usuario = Usuario(username=username, email=email, role='admin')
         
         if hasattr(novo_usuario, 'set_password'):
             novo_usuario.set_password(password)
@@ -145,7 +165,15 @@ def register():
         db.session.add(novo_usuario)
         db.session.commit()
         
-        flash("Cadastro realizado com sucesso! Faça o login.", "sucesso")
+        # Cria automaticamente uma Pousada exclusiva para este novo dono
+        nova_pousada = pousada(
+            nome=f"Pousada de {username}",
+            usuario_id=novo_usuario.id
+        )
+        db.session.add(nova_pousada)
+        db.session.commit()
+        
+        flash("Conta e Pousada criadas com sucesso! Faça o login.", "sucesso")
         return redirect(url_for('login'))
         
     return render_template('register.html')
@@ -162,7 +190,6 @@ def logout():
 @app.route('/criar_reserva', methods=['POST'])
 @login_required
 def criar_reserva():
-    # Recolhe dados do formulário e associa obrigatoriamente ao ID do utilizador atual
     acomodacao_id = request.form.get('acomodacao_id')
     hospede_nome = request.form.get('hospede_nome')
     data_entrada_str = request.form.get('data_entrada')
@@ -181,7 +208,6 @@ def criar_reserva():
         return redirect(url_for('index'))
 
     nova_reserva = reserva(
-        usuario_id=current_user.id, # <--- GRAVA O ID DO UTILIZADOR ATUAL
         acomodacao_id=acomodacao_id,
         hospede_nome=hospede_nome,
         data_entrada=data_entrada,
@@ -198,11 +224,7 @@ def criar_reserva():
 @app.route('/editar_reserva/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_reserva(id):
-    # Garante que o utilizador só edita a reserva se ela for dele (ou se for admin)
-    if getattr(current_user, 'role', 'cliente') == 'admin':
-        reserva_item = reserva.query.get_or_404(id)
-    else:
-        reserva_item = reserva.query.filter_by(id=id, usuario_id=current_user.id).first_or_404()
+    reserva_item = reserva.query.get_or_404(id)
     
     if request.method == 'POST':
         reserva_item.hospede_nome = request.form.get('hospede_nome', reserva_item.hospede_nome)
@@ -216,11 +238,7 @@ def editar_reserva(id):
 @app.route('/deletar_reserva/<int:id>', methods=['POST', 'GET'])
 @login_required
 def deletar_reserva(id):
-    # Se for admin, pode apagar qualquer reserva. Se for cliente, apenas as dele.
-    if getattr(current_user, 'role', 'cliente') == 'admin':
-        reserva_item = reserva.query.get_or_404(id)
-    else:
-        reserva_item = reserva.query.filter_by(id=id, usuario_id=current_user.id).first_or_404()
+    reserva_item = reserva.query.get_or_404(id)
     
     try:
         db.session.delete(reserva_item)
@@ -229,5 +247,23 @@ def deletar_reserva(id):
     except Exception as e:
         db.session.rollback()
         flash(f"Erro ao remover reserva: {e}", "erro")
+        
+    return redirect(url_for('index'))
+
+
+# --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
+
+@app.route('/deletar_acomodacao/<int:id>', methods=['POST', 'GET'])
+@login_required
+def deletar_acomodacao(id):
+    acomodacao_item = acomodacao.query.get_or_404(id)
+    
+    try:
+        db.session.delete(acomodacao_item)
+        db.session.commit()
+        flash("Acomodação removida com sucesso!", "sucesso")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao remover acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
