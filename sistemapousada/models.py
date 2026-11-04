@@ -4,19 +4,17 @@ from sistemapousada.database import db
 
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
-    # Corrigido: nullable=False em vez de callable=False
     username = db.Column(db.String(80), unique=True, nullable=False)
-    # Corrigido: parênteses no lugar certo e nullable=False em vez de nullable==False
+    email = db.Column(db.String(120), unique=True, nullable=True) # <-- Adicionado para suportar o cadastro por e-mail
     password_hash = db.Column(db.String(200), nullable=False)
-    # Adicionado: coluna 'role' para diferenciar admin de cliente
-    role = db.Column(db.String(20), nullable=False, default='cliente')
+    role = db.Column(db.String(20), nullable=False, default='cliente') # 'cliente' ou 'admin'
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-                              
+                        
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -39,9 +37,8 @@ class reserva(db.Model):
     valor_total = db.Column(db.Float, nullable=False)
     checkin_confirmado = db.Column(db.Boolean, default=False, nullable=False)
     checkout_confirmado = db.Column(db.Boolean, default=False, nullable=False)
-    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False)
+    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False) # <-- Mantido apenas uma vez
     comprovante_pagamento = db.Column(db.String(200), nullable=True)
-    pagamento_confirmado = db.Column(db.Boolean, default=False, nullable=False)
 
     @staticmethod
     def verificar_disponibilidade(acomodacao_id, entrada, saida):
