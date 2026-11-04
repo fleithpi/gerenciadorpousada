@@ -47,7 +47,7 @@ class reserva(db.Model):
     @staticmethod
     def verificar_disponibilidade(acomodacao_id, entrada, saida):
         conflito = reserva.query.filter(
-            reserva.acomodacao_id == acomodacao_id,
+            reserva.acomodacao_id == int(acomodacao_id), # <--- Garante int aqui também
             entrada < reserva.data_saida,
             saida > reserva.data_entrada
         ).first()
