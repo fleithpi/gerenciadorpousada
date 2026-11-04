@@ -62,6 +62,13 @@ with app.app_context():
         db.session.commit()
     except Exception:
         db.session.rollback()
+
+    # Migração automática: adiciona a coluna usuario_id na tabela reserva se não existir
+    try:
+        db.session.execute(text("ALTER TABLE reserva ADD COLUMN usuario_id INTEGER;"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     
     # Cria um Admin padrão se não existir nenhum utilizador
     if not Usuario.query.first():
@@ -100,8 +107,8 @@ def index():
     acomodacoes = acomodacao.query.filter(acomodacao.pousada_id.in_(pousada_ids)).all() if pousada_ids else []
     acomodacao_ids = [a.id for a in acomodacoes]
     
-    # Filtra apenas as reservas associadas às acomodações deste admin
-    reservas = reserva.query.filter(reserva.acomodacao_id.in_(acomodacao_ids)).all() if acomodacao_ids else []
+    # Filtra apenas as reservas associadas a este utilizador
+    reservas = reserva.query.filter_by(usuario_id=current_user.id).all()
         
     # Métricas para os cards do topo do painel
     total_pousadas = len(minhas_pousadas)
@@ -113,7 +120,7 @@ def index():
     chart_values = []
     for p in minhas_pousadas:
         chart_labels.append(p.nome)
-        count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id).count()
+        count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id, reserva.usuario_id == current_user.id).count()
         chart_values.append(count_res)
 
     return render_template(
@@ -233,12 +240,18 @@ def reservar():
         flash("Acomodação indisponível para o período selecionado.", "erro")
         return redirect(url_for('index'))
 
-    # Busca a acomodação para calcular o valor total automaticamente
+    # Segurança: Confirma que a acomodação pertence a uma pousada do admin logado
     acomod_obj = acomodacao.query.get_or_404(acomodacao_id)
+    pousada_pertence = pousada.query.filter_by(id=acomod_obj.pousada_id, usuario_id=current_user.id).first()
+    if not pousada_pertence:
+        flash("Acomodação inválida.", "erro")
+        return redirect(url_for('index'))
+
     dias = (data_saida - data_entrada).days
     valor_total = dias * acomod_obj.preco_diaria
 
     nova_reserva = reserva(
+        usuario_id=current_user.id, # <--- ASSOCIADO AO UTILIZADOR LOGADO
         acomodacao_id=acomodacao_id,
         hospede_nome=hospede_nome,
         data_entrada=data_entrada,
@@ -255,7 +268,7 @@ def reservar():
 @app.route('/editar_reserva/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_reserva(id):
-    reserva_item = reserva.query.get_or_404(id)
+    reserva_item = reserva.query.filter_by(id=id, usuario_id=current_user.id).first_or_404()
     
     if request.method == 'POST':
         reserva_item.hospede_nome = request.form.get('hospede') or request.form.get('hospede_nome', reserva_item.hospede_nome)
@@ -269,7 +282,7 @@ def editar_reserva(id):
 @app.route('/remover-reserva/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
 def remover_reserva(reserva_id):
-    reserva_item = reserva.query.get_or_404(reserva_id)
+    reserva_item = reserva.query.filter_by(id=reserva_id, usuario_id=current_user.id).first_or_404()
     
     try:
         db.session.delete(reserva_item)
@@ -281,8 +294,6 @@ def remover_reserva(reserva_id):
         
     return redirect(url_for('index'))
 
-
-# --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
 
 # --- ROTAS DE GESTÃO DE ACOMODAÇÕES ---
 
@@ -329,6 +340,28 @@ def adicionar_acomodacao():
         flash(f"Erro ao cadastrar acomodação: {e}", "erro")
         
     return redirect(url_for('index'))
+
+@app.route('/remover-acomodacao/<int:acomodacao_id>', methods=['GET', 'POST'])
+@login_required
+def remover_acomodacao(acomodacao_id):
+    acomodacao_item = acomodacao.query.get_or_404(acomodacao_id)
+    
+    # Segurança: Verifica se a acomodação pertence a uma pousada do admin logado
+    pousada_pertence = pousada.query.filter_by(id=acomodacao_item.pousada_id, usuario_id=current_user.id).first()
+    if not pousada_pertence:
+        flash("Acesso negado.", "erro")
+        return redirect(url_for('index'))
+    
+    try:
+        db.session.delete(acomodacao_item)
+        db.session.commit()
+        flash("Acomodação removida com sucesso!", "sucesso")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Erro ao remover acomodação (certifique-se de apagar as reservas associadas primeiro): {e}", "erro")
+        
+    return redirect(url_for('index'))
+
 
 # --- ROTAS DE CRIAÇÃO DE POUSADAS ---
 
