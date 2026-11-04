@@ -7,8 +7,8 @@ from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
 # Importações internas do seu projeto
-from sistemapousada.database import db
-from sistemapousada.models import Usuario, pousada, acomodacao, reserva
+from database import db
+from models import Usuario, pousada, acomodacao, reserva
 
 app = Flask(__name__)
 
