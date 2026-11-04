@@ -20,6 +20,7 @@ class Usuario(db.Model, UserMixin):
                         
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     nome = db.Column(db.String(100), nullable=False)
     acomodacoes = db.relationship('acomodacao', backref='pousada', lazy=True, cascade="all, delete-orphan")
 
