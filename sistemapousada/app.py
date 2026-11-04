@@ -46,9 +46,25 @@ ALLOWED_EXTENSIONS = {'pdf'}
 db.init_app(app)
 
 # Inicialização e criação limpa das tabelas no banco de dados (Compatível com PostgreSQL)
+# Inicialização e criação limpa das tabelas no banco de dados (Compatível com PostgreSQL)
 with app.app_context():
-    db.create_all()  # Como o banco da Neon nasce limpo, ele já cria a tabela 'reserva' com todas as colunas novas!
-
+    db.create_all()  # Cria as tabelas se não existirem
+    
+    # Verifica se já existe algum usuário no sistema. Se não houver, cria um Admin padrão
+    if not Usuario.query.first():
+        # Defina aqui os dados do seu admin inicial
+        admin_user = Usuario(username="admin", email="admin@pousada.com")
+        
+        # Dependendo de como o seu modelo Usuario define a senha (ajuste conforme o seu método):
+        if hasattr(admin_user, 'set_password'):
+            admin_user.set_password("sua_senha_segura_aqui")
+        else:
+            from werkzeug.security import generate_password_hash
+            admin_user.senha = generate_password_hash("sua_senha_segura_aqui") # Ajuste 'senha' para o nome exato do campo no seu models.py
+            
+        db.session.add(admin_user)
+        db.session.commit()
+        print(">>> Administrador padrão criado automaticamente com sucesso!")
 
 def poverty(func):
     @wraps(func)
