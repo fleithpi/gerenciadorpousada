@@ -211,7 +211,7 @@
                                                 {{ reserva.acomodacao.nome_numero }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-3">{{ reserva.hospede }}</td>
+                                        <td class="px-4 py-3">{{ reserva.hospede_nome }}</td>
                                         <td class="px-4 py-3">{{ reserva.data_entrada.strftime('%d/%m/%Y') }} até {{ reserva.data_saida.strftime('%d/%m/%Y') }}</td>
                                         <td class="px-4 py-3 text-emerald-600 font-bold">R$ {{ "%.2f"|format(reserva.valor_total) }}</td>
                                         <td class="px-4 py-3">
