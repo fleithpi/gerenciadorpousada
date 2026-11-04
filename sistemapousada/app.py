@@ -49,6 +49,13 @@ db.init_app(app)
 with app.app_context():
     db.create_all()  
     
+    # Adiciona a coluna email automaticamente caso a tabela já exista sem ela
+    try:
+        db.session.execute(text("ALTER TABLE usuario ADD COLUMN email VARCHAR(120);"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    
     # Cria um Admin padrão se não existir nenhum utilizador
     if not Usuario.query.first():
         admin_user = Usuario(username="admin", email="admin@pousada.com", role="admin")
