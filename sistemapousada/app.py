@@ -216,7 +216,7 @@ def editar_reserva(id):
 @app.route('/deletar_reserva/<int:id>', methods=['POST', 'GET'])
 @login_required
 def deletar_reserva(id):
-    # Garante que o utilizador só apaga a própria reserva (ou admin apaga qualquer uma)
+    # Se for admin, pode apagar qualquer reserva. Se for cliente, apenas as dele.
     if getattr(current_user, 'role', 'cliente') == 'admin':
         reserva_item = reserva.query.get_or_404(id)
     else:
