@@ -117,7 +117,7 @@ def index():
             count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id).count()
             chart_values.append(count_res)
 
-        return render_template(
+        return render_templates(
             'index.html', 
             pousadas=minhas_pousadas, 
             acomodacoes=acomodacoes, 
@@ -131,7 +131,7 @@ def index():
     except Exception as e:
         app.logger.error(f"Erro na rota index: {e}")
         flash(f"Erro ao carregar painel: {e}", "erro")
-        return render_template('index.html', pousadas=[], acomodacoes=[], reservas=[], total_pousadas=0, total_acomodacoes=0, total_reservas=0, chart_labels=[], chart_values=[])
+        return render_templates('index.html', pousadas=[], acomodacoes=[], reservas=[], total_pousadas=0, total_acomodacoes=0, total_reservas=0, chart_labels=[], chart_values=[])
 
 
 # --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
@@ -162,7 +162,7 @@ def login():
             
         flash("E-mail/Usuário ou senha inválidos", "erro")
         
-    return render_template('login.html')
+    return render_templates('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -203,7 +203,7 @@ def register():
         flash("Conta e Pousada criadas com sucesso! Faça o login.", "sucesso")
         return redirect(url_for('login'))
         
-    return render_template('register.html')
+    return render_templates('register.html')
 
 @app.route('/logout')
 @login_required
@@ -286,7 +286,7 @@ def editar_reserva(id):
         flash("Reserva atualizada com sucesso!", "sucesso")
         return redirect(url_for('index'))
         
-    return render_template('editar_reserva.html', reserva=reserva_item)
+    return render_templates('editar_reserva.html', reserva=reserva_item)
 
 @app.route('/remover-reserva/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
