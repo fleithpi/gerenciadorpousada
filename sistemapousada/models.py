@@ -7,9 +7,9 @@ class Usuario(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='cliente')
+    role = db.Column(db.String(20), nullable=False, default='cliente') # 'cliente' ou 'admin'
     
-    # Relação para que cada utilizador tenha acesso direto às suas reservas
+    # Relacionamento para aceder diretamente às reservas do utilizador
     reservas = db.relationship('reserva', backref='usuario', lazy=True, cascade="all, delete-orphan")
 
     def set_password(self, password):
@@ -32,7 +32,8 @@ class acomodacao(db.Model):
 
 class reserva(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # Vínculo obrigatório com o utilizador logado
+    
+    # CHAVE ESTRANGEIRA OBRIGATÓRIA: Identifica de quem é a reserva
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     
     acomodacao_id = db.Column(db.Integer, db.ForeignKey('acomodacao.id'), nullable=False)
