@@ -1,6 +1,6 @@
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from database import db
+from sistemapousada.database import db
 
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
