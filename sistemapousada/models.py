@@ -20,9 +20,7 @@ class Usuario(db.Model, UserMixin):
                         
 class pousada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # CHAVE ESTRANGEIRA: Identifica qual administrador é dono desta pousada
-    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
-    
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False) # <--- Essencial
     nome = db.Column(db.String(100), nullable=False)
     acomodacoes = db.relationship('acomodacao', backref='pousada', lazy=True, cascade="all, delete-orphan")
 
