@@ -27,6 +27,15 @@
         
         <!-- Conteúdo Principal -->
         <main id="mainContent" class="container mx-auto p-6 max-w-6xl flex-1 w-full transition-all">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="p-4 mb-4 rounded text-white {% if category == 'erro' %}bg-red-500{% else %}bg-green-500{% endif %} font-semibold">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
             <div class="flex items-center justify-between mb-6">
                 <h1 class="text-3xl font-bold text-gray-800">Gerenciar Pagamentos</h1>
                 <a href="/reservas" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition">Voltar</a>
@@ -76,13 +85,16 @@
                                         {% endif %}
                                     </td>
                                     <td class="px-4 py-3">
-                                        <div class="flex gap-3">
-                                            {% if reserva.pagamento_confirmado %}
-                                                <a href="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs font-medium">Remover confirmação</a>
-                                            {% else %}
-                                                <span class="text-gray-400 text-xs">—</span>
-                                            {% endif %}
-                                        </div>
+                                        {% if reserva.pagamento_confirmado %}
+                                            <form action="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" method="post">
+                                                <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">Remover confirmação</button>
+                                            </form>
+                                        {% else %}
+                                            <form action="{{ url_for('confirmar_pagamento', reserva_id=reserva.id) }}" method="post" enctype="multipart/form-data" class="space-y-2">
+                                                <input type="file" name="comprovante" accept="application/pdf,.pdf" required class="block max-w-48 text-xs text-gray-700">
+                                                <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs font-medium">Enviar comprovante PDF</button>
+                                            </form>
+                                        {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}

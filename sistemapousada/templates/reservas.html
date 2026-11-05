@@ -183,7 +183,9 @@
                                                     {% if reserva.comprovante_pagamento %}
                                                         <a href="{{ url_for('download_comprovante', filename=reserva.comprovante_pagamento) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Ver comprovante</a>
                                                     {% endif %}
-                                                    <a href="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</a>
+                                                    <form action="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" method="post">
+                                                        <button type="submit" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</button>
+                                                    </form>
                                                 {% endif %}
                                             </div>
                                         </td>

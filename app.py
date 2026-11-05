@@ -4,8 +4,8 @@ from flask import Flask, render_template, request, redirect, flash, url_for, sen
 from datetime import datetime, date, timedelta
 from functools import wraps
 from sqlalchemy import text
-from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from uuid import uuid4
 
 # Importações internas do seu projeto
 from sistemapousada.database import db
@@ -90,6 +90,13 @@ with app.app_context():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def reserva_do_usuario(reserva_id):
+    return reserva.query.join(acomodacao).join(pousada).filter(
+        reserva.id == reserva_id,
+        pousada.usuario_id == current_user.id
+    ).first_or_404()
 
 
 # --- ROTA PRINCIPAL (Isolada por utilizador com métricas e gráficos) ---
@@ -433,4 +440,90 @@ def gerenciar_reservas():
 @app.route('/pagamento')
 @login_required
 def gerenciar_pagamentos():
-    return redirect(url_for('index'))
+    minhas_pousadas = pousada.query.filter_by(usuario_id=current_user.id).all()
+    pousada_ids = [item.id for item in minhas_pousadas]
+    acomodacao_ids = [
+        item.id for item in acomodacao.query.filter(
+            acomodacao.pousada_id.in_(pousada_ids)
+        ).all()
+    ] if pousada_ids else []
+    reservas_usuario = reserva.query.filter(
+        reserva.acomodacao_id.in_(acomodacao_ids)
+    ).all() if acomodacao_ids else []
+    return render_template('pagamento.html', reservas=reservas_usuario)
+
+@app.route('/confirmar-pagamento/<int:reserva_id>', methods=['POST'])
+@login_required
+def confirmar_pagamento(reserva_id):
+    reserva_item = reserva_do_usuario(reserva_id)
+    arquivo = request.files.get('comprovante')
+    if not arquivo or not arquivo.filename:
+        flash("Selecione um arquivo PDF para enviar.", "erro")
+        return redirect(url_for('gerenciar_pagamentos'))
+    if not allowed_file(arquivo.filename) or arquivo.stream.read(5) != b'%PDF-':
+        flash("O comprovante deve ser um arquivo PDF válido.", "erro")
+        return redirect(url_for('gerenciar_pagamentos'))
+
+    arquivo.stream.seek(0)
+    nome_arquivo = f"{uuid4().hex}.pdf"
+    caminho_arquivo = os.path.join(app.config['UPLOAD_FOLDER'], nome_arquivo)
+    arquivo.save(caminho_arquivo)
+
+    comprovante_anterior = reserva_item.comprovante_pagamento
+    reserva_item.comprovante_pagamento = nome_arquivo
+    reserva_item.pagamento_confirmado = True
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if os.path.exists(caminho_arquivo):
+            os.remove(caminho_arquivo)
+        app.logger.exception("Erro ao salvar comprovante de pagamento")
+        flash("Não foi possível salvar o comprovante. Tente novamente.", "erro")
+        return redirect(url_for('gerenciar_pagamentos'))
+
+    if comprovante_anterior:
+        caminho_anterior = os.path.join(
+            app.config['UPLOAD_FOLDER'], os.path.basename(comprovante_anterior)
+        )
+        if os.path.isfile(caminho_anterior):
+            os.remove(caminho_anterior)
+    flash("Comprovante enviado e pagamento confirmado.", "sucesso")
+    return redirect(url_for('gerenciar_pagamentos'))
+
+@app.route('/comprovantes/<filename>')
+@login_required
+def download_comprovante(filename):
+    comprovante = reserva.query.join(acomodacao).join(pousada).filter(
+        reserva.comprovante_pagamento == filename,
+        pousada.usuario_id == current_user.id
+    ).first_or_404()
+    return send_from_directory(
+        app.config['UPLOAD_FOLDER'],
+        comprovante.comprovante_pagamento,
+        as_attachment=True
+    )
+
+@app.route('/remover-confirmacao-pagamento/<int:reserva_id>', methods=['POST'])
+@login_required
+def remover_confirmacao_pagamento(reserva_id):
+    reserva_item = reserva_do_usuario(reserva_id)
+    comprovante = reserva_item.comprovante_pagamento
+    reserva_item.pagamento_confirmado = False
+    reserva_item.comprovante_pagamento = None
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Erro ao remover confirmação de pagamento")
+        flash("Não foi possível remover a confirmação. Tente novamente.", "erro")
+        return redirect(url_for('gerenciar_pagamentos'))
+
+    if comprovante:
+        caminho_arquivo = os.path.join(
+            app.config['UPLOAD_FOLDER'], os.path.basename(comprovante)
+        )
+        if os.path.isfile(caminho_arquivo):
+            os.remove(caminho_arquivo)
+    flash("Confirmação de pagamento removida.", "sucesso")
+    return redirect(url_for('gerenciar_pagamentos'))
