@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Pousadas Multi-Tenant</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .metrics-grid {
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+        }
+
+        .forms-grid {
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+        }
+    </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     
@@ -33,7 +42,7 @@
 
     <div id="contentWrapper" class="flex-1 flex flex-col w-full transition-[padding] duration-300">
         
-        <main id="mainContent" class="container mx-auto p-6 max-w-none flex-1 w-full">
+        <main id="mainContent" class="mx-auto w-full max-w-none flex-1 p-4 sm:p-6 lg:p-8">
             <div class="flex items-center justify-between mb-6">
                 <button id="sidebarToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" class="inline-flex shrink-0 items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-400">
                     <svg aria-hidden="true" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,18 +64,18 @@
                     {% endif %}
                 {% endwith %}
 
-                <div id="metricas" class="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <div id="metricas" class="metrics-grid grid w-full items-stretch gap-6 mb-6">
+                    <div class="flex h-full min-w-0 min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pousadas</p>
                         <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_pousadas }}</p>
                         <p class="mt-2 text-sm text-gray-500">Total de pousadas cadastradas.</p>
                     </div>
-                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div class="flex h-full min-w-0 min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Acomodações</p>
                         <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_acomodacoes }}</p>
                         <p class="mt-2 text-sm text-gray-500">Acomodações disponíveis para reserva.</p>
                     </div>
-                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div class="flex h-full min-w-0 min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Reservas</p>
                         <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_reservas }}</p>
                         <p class="mt-2 text-sm text-gray-500">Reservas confirmadas até agora.</p>
@@ -87,8 +96,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 items-stretch gap-6 mb-6 md:auto-rows-fr md:grid-cols-2 xl:grid-cols-3">
-                    <div id="nova-reserva" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <div class="forms-grid grid w-full items-stretch gap-6 mb-6 md:auto-rows-fr">
+                    <div id="nova-reserva" class="flex h-full min-w-0 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Criar Nova Reserva</h2>
                         <form action="/reservar" method="POST" class="space-y-4">
                             <div>
@@ -117,7 +126,7 @@
                         </form>
                     </div>
 
-                    <div id="nova-acomodacao" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div id="nova-acomodacao" class="flex h-full min-w-0 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Adicionar Acomodação</h2>
                         <form action="/adicionar-acomodacao" method="POST" class="space-y-4">
                             <div>
@@ -164,7 +173,7 @@
                         </div>
                     </div>
 
-                    <div id="nova-pousada" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div id="nova-pousada" class="flex h-full min-w-0 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Cadastrar Nova Pousada</h2>
                         <form action="/adicionar-pousada" method="POST" class="space-y-4">
                             <div>
