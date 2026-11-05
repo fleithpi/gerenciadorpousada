@@ -8,19 +8,13 @@
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex flex-col">
     
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300 lg:translate-x-0">
-        <div class="flex items-center justify-between lg:hidden">
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 transform -translate-x-full bg-blue-700 p-6 text-white shadow-xl overflow-y-auto transition-transform duration-300">
+        <div class="flex items-center justify-between">
             <div>
                 <h2 class="text-2xl font-bold">Menu</h2>
                 <p class="mt-1 text-sm text-blue-100">Navegue pelas áreas principais.</p>
             </div>
-            <button id="sidebarClose" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus:outline-none">✕</button>
-        </div>
-        <div class="hidden lg:block">
-            <div>
-                <h2 class="text-2xl font-bold">Menu</h2>
-                <p class="mt-2 text-sm text-blue-100">Navegue pelas áreas principais do sistema.</p>
-            </div>
+            <button id="sidebarClose" type="button" aria-label="Fechar menu" class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white hover:bg-blue-500 focus:outline-none">✕</button>
         </div>
         <nav class="mt-6 space-y-2 text-sm text-blue-100">
             <a href="#metricas" class="block rounded-lg px-3 py-2 bg-blue-600 hover:bg-blue-500 transition">Métricas gerais</a>
@@ -35,13 +29,17 @@
         </nav>
     </aside>
 
-    <div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-slate-900/40 lg:hidden"></div>
+    <div id="sidebarBackdrop" class="fixed inset-0 z-40 hidden bg-slate-900/40"></div>
 
-    <div class="flex-1 flex flex-col pl-0 lg:pl-72 w-full">
+    <div class="flex-1 flex flex-col w-full">
         
         <main id="mainContent" class="container mx-auto p-6 max-w-6xl flex-1 w-full">
             <div class="flex items-center justify-between mb-6">
-                <button id="sidebarToggle" aria-expanded="false" aria-controls="sidebar" class="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition lg:hidden">Menu</button>
+                <button id="sidebarToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <svg aria-hidden="true" class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
                 <h1 class="text-3xl font-bold text-gray-800 mb-0 text-center lg:text-left w-full lg:w-auto">Sistema de Gestão de Hospedagens</h1>
             </div>
 
@@ -56,25 +54,25 @@
                     {% endif %}
                 {% endwith %}
 
-                <div id="metricas" class="grid gap-6 mb-6 md:grid-cols-3">
-                    <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <div id="metricas" class="grid grid-cols-1 gap-6 mb-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Pousadas</p>
-                        <p class="mt-4 text-4xl font-bold text-slate-900">{{ total_pousadas }}</p>
+                        <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_pousadas }}</p>
                         <p class="mt-2 text-sm text-gray-500">Total de pousadas cadastradas.</p>
                     </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Acomodações</p>
-                        <p class="mt-4 text-4xl font-bold text-slate-900">{{ total_acomodacoes }}</p>
+                        <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_acomodacoes }}</p>
                         <p class="mt-2 text-sm text-gray-500">Acomodações disponíveis para reserva.</p>
                     </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div class="flex h-full min-h-40 flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Reservas</p>
-                        <p class="mt-4 text-4xl font-bold text-slate-900">{{ total_reservas }}</p>
+                        <p class="mt-auto pt-4 text-4xl font-bold text-slate-900">{{ total_reservas }}</p>
                         <p class="mt-2 text-sm text-gray-500">Reservas confirmadas até agora.</p>
                     </div>
                 </div>
 
-                <div id="grafico" class="grid gap-6 lg:grid-cols-[1.3fr_1fr] mb-6">
+                <div id="grafico" class="mb-6">
                     <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <div class="flex items-center justify-between mb-4">
                             <div>
@@ -82,20 +80,14 @@
                                 <p class="text-sm text-gray-500">Visualize a quantidade de reservas em cada pousada.</p>
                             </div>
                         </div>
-                        <canvas id="reservasChart" class="mt-4"></canvas>
-                    </div>
-                    <div class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Atalhos rápidos</h2>
-                        <ul class="space-y-4 text-sm text-gray-600">
-                            <li class="rounded-xl bg-slate-50 p-4 border border-slate-100">Use o formulário abaixo para criar uma nova reserva rapidamente.</li>
-                            <li class="rounded-xl bg-slate-50 p-4 border border-slate-100">Acesse <code class="bg-slate-100 px-2 py-1 rounded">/seed</code> para popular o banco de dados automaticamente.</li>
-                            <li class="rounded-xl bg-slate-50 p-4 border border-slate-100">Abra a página em desktop ou tablet para ver o layout responsivo.</li>
-                        </ul>
+                        <div class="relative h-64 sm:h-80">
+                            <canvas id="reservasChart" class="h-full w-full"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid gap-6 lg:grid-cols-3 mb-6">
-                    <div id="nova-reserva" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                <div class="grid grid-cols-1 items-stretch gap-6 mb-6 md:auto-rows-fr md:grid-cols-2 xl:grid-cols-3">
+                    <div id="nova-reserva" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Criar Nova Reserva</h2>
                         <form action="/reservar" method="POST" class="space-y-4">
                             <div>
@@ -124,7 +116,7 @@
                         </form>
                     </div>
 
-                    <div id="nova-acomodacao" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200">
+                    <div id="nova-acomodacao" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Adicionar Acomodação</h2>
                         <form action="/adicionar-acomodacao" method="POST" class="space-y-4">
                             <div>
@@ -171,7 +163,7 @@
                         </div>
                     </div>
 
-                    <div id="nova-pousada" class="bg-white p-6 rounded-3xl shadow-md border border-gray-200 h-fit">
+                    <div id="nova-pousada" class="flex h-full flex-col bg-white p-6 rounded-3xl shadow-md border border-gray-200">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Cadastrar Nova Pousada</h2>
                         <form action="/adicionar-pousada" method="POST" class="space-y-4">
                             <div>
@@ -255,6 +247,7 @@
                     },
                     options: {
                         responsive: true,
+                        maintainAspectRatio: false,
                         plugins: {
                             legend: { display: false },
                             tooltip: { enabled: true }
@@ -282,12 +275,14 @@
             sidebar.classList.remove('-translate-x-full');
             sidebarBackdrop.classList.remove('hidden');
             sidebarToggle?.setAttribute('aria-expanded', 'true');
+            sidebarToggle?.setAttribute('aria-label', 'Fechar menu');
         }
 
         function closeSidebar() {
             sidebar.classList.add('-translate-x-full');
             sidebarBackdrop.classList.add('hidden');
             sidebarToggle?.setAttribute('aria-expanded', 'false');
+            sidebarToggle?.setAttribute('aria-label', 'Abrir menu');
         }
 
         sidebarToggle?.addEventListener('click', () => {
@@ -298,9 +293,11 @@
         sidebarBackdrop?.addEventListener('click', closeSidebar);
         
         document.querySelectorAll('#sidebar nav a').forEach(link => {
-            link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) closeSidebar();
-            });
+            link.addEventListener('click', closeSidebar);
+        });
+
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape') closeSidebar();
         });
     </script>
 </body>
