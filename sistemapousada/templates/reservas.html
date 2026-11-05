@@ -174,15 +174,16 @@
                                                         <span class="text-gray-500">aguardando</span>
                                                     {% endif %}
                                                 </span>
-                                                {% if not reserva.pagamento_confirmado %}
-                                                    <form action="{{ url_for('confirmar_pagamento', reserva_id=reserva.id) }}" method="post" enctype="multipart/form-data" class="space-y-1">
-                                                        <input type="file" name="comprovante" accept="application/pdf" class="block text-xs text-gray-700" required>
-                                                        <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs">Enviar comprovante</button>
-                                                    </form>
-                                                {% else %}
-                                                    {% if reserva.comprovante_pagamento %}
-                                                        <a href="{{ url_for('download_comprovante', filename=reserva.comprovante_pagamento) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Ver comprovante</a>
-                                                    {% endif %}
+                                                {% if reserva.comprovante_pagamento %}
+                                                    <a href="{{ url_for('download_comprovante', filename=reserva.comprovante_pagamento) }}" class="text-indigo-600 hover:text-indigo-800 text-xs">Ver comprovante</a>
+                                                {% endif %}
+                                                <form action="{{ url_for('confirmar_pagamento', reserva_id=reserva.id) }}" method="post" enctype="multipart/form-data" class="space-y-1">
+                                                    <input type="file" name="comprovante" accept="application/pdf,.pdf" class="block text-xs text-gray-700" required>
+                                                    <button type="submit" class="text-blue-600 hover:text-blue-800 text-xs">
+                                                        {% if reserva.comprovante_pagamento %}Substituir PDF{% else %}Adicionar PDF{% endif %}
+                                                    </button>
+                                                </form>
+                                                {% if reserva.pagamento_confirmado %}
                                                     <form action="{{ url_for('remover_confirmacao_pagamento', reserva_id=reserva.id) }}" method="post">
                                                         <button type="submit" class="text-red-600 hover:text-red-800 text-xs">Remover confirmação</button>
                                                     </form>
