@@ -24,6 +24,8 @@ database_url = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
+print("--> BANCO DE DADOS EM USO:", database_url)    
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_para_alertas')
 
