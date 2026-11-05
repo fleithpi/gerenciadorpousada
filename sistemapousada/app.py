@@ -1,6 +1,6 @@
 import os
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from flask import Flask, render_templates, request, redirect, flash, url_for, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, flash, url_for, send_from_directory, abort
 from datetime import datetime, date, timedelta
 from functools import wraps
 from sqlalchemy import text
@@ -11,7 +11,12 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sistemapousada.database import db
 from sistemapousada.models import Usuario, pousada, acomodacao, reserva
 
-app = Flask(__name__, template_folder='templates')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_templates = os.path.join(BASE_DIR, 'templates')
+if not os.path.isdir(_templates):
+    _templates = os.path.join(BASE_DIR, 'sistemapousada', 'templates')
+
+app = Flask(__name__, template_folder=_templates)
 
 # Configuração da URL do banco de dados 
 database_url = os.getenv('DATABASE_URL', 'sqlite:///pousadas.db')
@@ -117,7 +122,7 @@ def index():
             count_res = reserva.query.join(acomodacao).filter(acomodacao.pousada_id == p.id).count()
             chart_values.append(count_res)
 
-        return render_templates(
+        return render_template(
             'index.html', 
             pousadas=minhas_pousadas, 
             acomodacoes=acomodacoes, 
@@ -131,7 +136,7 @@ def index():
     except Exception as e:
         app.logger.error(f"Erro na rota index: {e}")
         flash(f"Erro ao carregar painel: {e}", "erro")
-        return render_templates('index.html', pousadas=[], acomodacoes=[], reservas=[], total_pousadas=0, total_acomodacoes=0, total_reservas=0, chart_labels=[], chart_values=[])
+        return render_template('index.html', pousadas=[], acomodacoes=[], reservas=[], total_pousadas=0, total_acomodacoes=0, total_reservas=0, chart_labels=[], chart_values=[])
 
 
 # --- ROTAS DE AUTENTICAÇÃO E CADASTRO ---
@@ -162,7 +167,7 @@ def login():
             
         flash("E-mail/Usuário ou senha inválidos", "erro")
         
-    return render_templates('login.html')
+    return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -189,21 +194,27 @@ def register():
         else:
             novo_usuario.senha = generate_password_hash(password)
             
-        db.session.add(novo_usuario)
-        db.session.commit()
-        
-        # Cria automaticamente uma Pousada exclusiva para este novo dono
-        nova_pousada = pousada(
-            nome=f"Pousada de {username}",
-            usuario_id=novo_usuario.id
-        )
-        db.session.add(nova_pousada)
-        db.session.commit()
-        
+        try:
+            db.session.add(novo_usuario)
+            db.session.flush()  # gera o id sem fechar a transação
+
+            # Cria automaticamente uma Pousada exclusiva para este novo dono
+            nova_pousada = pousada(
+                nome=f"Pousada de {username}",
+                usuario_id=novo_usuario.id
+            )
+            db.session.add(nova_pousada)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Erro ao cadastrar usuário: {e}")
+            flash("Não foi possível criar a conta. Tente novamente.", "erro")
+            return redirect(url_for('register'))
+
         flash("Conta e Pousada criadas com sucesso! Faça o login.", "sucesso")
         return redirect(url_for('login'))
         
-    return render_templates('register.html')
+    return render_template('registrar.html')
 
 @app.route('/logout')
 @login_required
@@ -286,7 +297,7 @@ def editar_reserva(id):
         flash("Reserva atualizada com sucesso!", "sucesso")
         return redirect(url_for('index'))
         
-    return render_templates('editar_reserva.html', reserva=reserva_item)
+    return render_template('editar_reserva.html', reserva=reserva_item)
 
 @app.route('/remover-reserva/<int:reserva_id>', methods=['GET', 'POST'])
 @login_required
