@@ -91,7 +91,12 @@
                             </div>
                         </div>
                         <div class="relative h-64 sm:h-80">
-                            <canvas id="reservasChart" class="h-full w-full"></canvas>
+                            <canvas
+                                id="reservasChart"
+                                data-labels='{{ chart_labels | tojson }}'
+                                data-values='{{ chart_values | tojson }}'
+                                class="h-full w-full"
+                            ></canvas>
                         </div>
                     </div>
                 </div>
@@ -237,10 +242,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        const labels = {{ chart_labels | tojson | safe if chart_labels else '[]' }};
-        const values = {{ chart_values | tojson | safe if chart_values else '[]' }};
         const ctx = document.getElementById('reservasChart');
         if (ctx) {
+            const labels = JSON.parse(ctx.dataset.labels || '[]');
+            const values = JSON.parse(ctx.dataset.values || '[]');
             if (labels.length) {
                 new Chart(ctx, {
                     type: 'bar',
